@@ -108,140 +108,53 @@ class User(UserMixin):
         return f"<User {self.username}>"
 
 
-class Category:
+class Teacher:
     def __init__(self, data):
         self.data = data or {}
-
         self.id = str(self.data.get("_id"))
-        self.name = self.data.get("name")
-        self.image = self.data.get("image")
+        self.user_id = self.data.get("user_id") # Ku xiraya User collection-ka
+        self.specialization = self.data.get("specialization")
+        self.assigned_classes = self.data.get("assigned_classes", []) # List of class_ids
 
-    def to_dict(self):
-        return {
-            "_id": self.id,
-            "name": self.name,
-            "image": self.image
-        }
-
-    def __repr__(self):
-        return f"<Category {self.name}>"
-
-
-class Product:
+class Student:
     def __init__(self, data):
         self.data = data or {}
-
         self.id = str(self.data.get("_id"))
-        self.category_id = str(self.data.get("category_id"))
-
-        self.name = self.data.get("name")
-        self.description = self.data.get("description")
-        self.price = self.data.get("price", 0)
-        self.stock = self.data.get("stock", 0)
-        self.image = self.data.get("image")
-
-        # Optional advanced fields
-        self.brand = self.data.get("brand")
-        self.sku = self.data.get("sku")
-        self.status = self.data.get("status", True)
-
-    def is_in_stock(self):
-        return self.stock > 0
-
-    def reduce_stock(self, qty=1):
-        if self.stock >= qty:
-            self.stock -= qty
-
-    def to_dict(self):
-        return {
-            "_id": self.id,
-            "category_id": self.category_id,
-            "name": self.name,
-            "description": self.description,
-            "price": self.price,
-            "stock": self.stock,
-            "image": self.image,
-            "brand": self.brand,
-            "sku": self.sku,
-            "status": self.status
-        }
-
-    def __repr__(self):
-        return f"<Product {self.name}>"
-    
-
-class Cart:
-    def __init__(self, data):
-        self.data = data or {}
-
-        self.id = str(self.data.get("_id"))
-        self.user_id = str(self.data.get("user_id"))
-
-        self.items = self.data.get("items", [])  
-        # items = [{"product_id": "...", "qty": 2, "price": 25}]
-
+        self.full_name = self.data.get("full_name")
+        self.student_id = self.data.get("student_id") # ID gaar ah ee ardayga
+        self.class_id = self.data.get("class_id")     # Ku xiran Class-ka
+        self.teacher_id = self.data.get("teacher_id") # Macalinka uu hoos tago
         self.created_at = self.data.get("created_at")
-        self.updated_at = self.data.get("updated_at")
 
-    def total_price(self):
-        return sum(item["qty"] * item["price"] for item in self.items)
 
-    def total_items(self):
-        return sum(item["qty"] for item in self.items)
-
-    def to_dict(self):
-        return {
-            "_id": self.id,
-            "user_id": self.user_id,
-            "items": self.items,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at
-        }
-
-    def __repr__(self):
-        return f"<Cart {self.user_id}>"
-    
-
-class Order:
+class ClassRoom:
     def __init__(self, data):
         self.data = data or {}
-
         self.id = str(self.data.get("_id"))
-        self.user_id = str(self.data.get("user_id"))
-
-        self.items = self.data.get("items", [])
-        self.total = self.data.get("total", 0)
-
-        self.status = self.data.get("status", "pending")
-        # pending | paid | shipped | delivered | cancelled
-
-        self.payment_method = self.data.get("payment_method", "cash")
-        self.payment_status = self.data.get("payment_status", "unpaid")
-
-        self.created_at = self.data.get("created_at")
-        self.updated_at = self.data.get("updated_at")
-
-    def is_paid(self):
-        return self.payment_status == "paid"
-
-    def to_dict(self):
-        return {
-            "_id": self.id,
-            "user_id": self.user_id,
-            "items": self.items,
-            "total": self.total,
-            "status": self.status,
-            "payment_method": self.payment_method,
-            "payment_status": self.payment_status,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at
-        }
-
-    def __repr__(self):
-        return f"<Order {self.id}>"
-    
+        self.class_name = self.data.get("class_name") # Tusaale: 12-A
+        self.teacher_id = self.data.get("teacher_id") # Macalinka fasalkan leh
 
 
+
+class Subject:
+    def __init__(self, data):
+        self.data = data or {}
+        self.id = str(self.data.get("_id"))
+        self.subject_name = self.data.get("subject_name") # Tusaale: Xisaab
+        self.teacher_id = self.data.get("teacher_id")    # Kii dhiga
+
+
+class Result:
+    def __init__(self, data):
+        self.data = data or {}
+        self.id = str(self.data.get("_id"))
+        self.student_id = self.data.get("student_id")
+        self.subject_id = self.data.get("subject_id")
+        self.teacher_id = self.data.get("teacher_id") # Si macalinka loo shaandheeyo
+        self.score = self.data.get("score", 0)
+        self.exam_date = self.data.get("exam_date")
+
+        
 
 class Session:
     def __init__(self, data):
