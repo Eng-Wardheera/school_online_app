@@ -27,17 +27,30 @@
 
     </div>
 
-    <div class="page-header-right ms-auto">
+   <div class="page-header-right ms-auto d-flex flex-wrap gap-2 align-items-center">
 
-        <a href="{{ url_for('main.bulk_assign_teacher') }}"
-           class="btn btn-primary">
+    <!-- ASSIGN DEADLINE -->
+    <button class="btn btn-primary" onclick="openDeadlineModal()">
+        <i class="feather-plus me-1"></i>
+        Assign Deadline
+    </button>
 
-            <i class="feather-plus me-1"></i>
-            Assign Teacher
+    <!-- REMOVE DEADLINE -->
+  <form method="POST" action="{{ url_for('main.remove_result_deadline') }}">
+    <button type="submit" class="btn btn-danger">
+        <i class="feather-trash me-1"></i>
+        Remove Deadline
+    </button>
+</form>
 
-        </a>
+    <!-- ASSIGN TEACHER -->
+    <a href="{{ url_for('main.bulk_assign_teacher') }}" class="btn btn-success">
+        <i class="feather-user-plus me-1"></i>
+        Assign Teacher
+    </a>
 
-    </div>
+</div>
+
 
 </div>
 
@@ -189,6 +202,164 @@
     </div>
 
 </div>
+
+
+<!-- OVERLAY -->
+<div id="deadlineOverlay" class="modal-overlay hidden"></div>
+
+<!-- MODAL -->
+<div id="deadlineModal" class="custom-modal hidden">
+
+    <div class="modal-box">
+
+        <div class="modal-header">
+            <h5>Assign Deadline (All Teachers)</h5>
+            <button class="close-btn" onclick="closeDeadlineModal()">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('main.add_result_deadline') }}">
+
+            <div class="modal-body">
+
+                <label>Start Time</label>
+                <input type="datetime-local" name="start_time" required>
+
+                <label>End Time</label>
+                <input type="datetime-local" name="end_time" required>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeDeadlineModal()">
+                    Cancel
+                </button>
+
+                <button type="submit" class="btn-save">
+                    Save Deadline
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<style>
+    /* overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+}
+
+/* modal container */
+.custom-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+/* modal box */
+.modal-box {
+    background: #fff;
+    width: 420px;
+    border-radius: 12px;
+    padding: 20px;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+/* header */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+/* close button */
+.close-btn {
+    border: none;
+    background: transparent;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+/* body */
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+/* footer */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+/* buttons */
+.btn-cancel {
+    padding: 8px 14px;
+    background: #ddd;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-save {
+    padding: 8px 14px;
+    background: #0d6efd;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* hidden */
+.hidden {
+    display: none;
+}
+
+/* animation */
+@keyframes fadeIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+</style>
+
+<script>
+function openDeadlineModal() {
+    document.getElementById("deadlineModal").classList.remove("hidden");
+    document.getElementById("deadlineOverlay").classList.remove("hidden");
+}
+
+function closeDeadlineModal() {
+    document.getElementById("deadlineModal").classList.add("hidden");
+    document.getElementById("deadlineOverlay").classList.add("hidden");
+}
+
+/* close when clicking outside modal */
+document.getElementById("deadlineOverlay").addEventListener("click", function () {
+    closeDeadlineModal();
+});
+</script>
+
+
 
 {% endblock %}
 

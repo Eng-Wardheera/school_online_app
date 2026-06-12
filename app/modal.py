@@ -141,11 +141,15 @@ class TeacherAssignment:
         self.section_id = str(self.data.get("section_id"))
         self.subject_id = str(self.data.get("subject_id"))
 
+        # 🔥 NEW: DEADLINE RANGE
+        self.start_time = self.data.get("start_time")  # FROM
+        self.end_time = self.data.get("end_time")      # TO
+
         self.created_at = self.data.get("created_at")
         self.updated_at = self.data.get("updated_at")
 
 
-    
+        
 
 class Student:
     def __init__(self, data):

@@ -16,7 +16,7 @@ body{
     background: linear-gradient(135deg, #f5f7fb, #eef2f7);
 }
 
-/* PROFILE CARD */
+/* PROFILE */
 .profile-card{
     border:none;
     border-radius:20px;
@@ -56,6 +56,28 @@ body{
 .stat-3{background:linear-gradient(135deg,#ff416c,#ff4b2b);}
 .stat-4{background:linear-gradient(135deg,#36d1dc,#5b86e5);}
 
+/* CLOCK */
+.clock-box{
+    background:white;
+    padding:15px;
+    border-radius:15px;
+    text-align:center;
+    font-weight:bold;
+    box-shadow:0 4px 10px rgba(0,0,0,0.08);
+}
+
+/* DEADLINE */
+.deadline-box{
+    background:#111827;
+    color:white;
+    padding:15px;
+    border-radius:15px;
+    text-align:center;
+}
+
+.badge-live{ background:#22c55e; }
+.badge-closed{ background:#ef4444; }
+
 /* CLASS CARD */
 .class-card{
     border:none;
@@ -89,131 +111,24 @@ body{
 
 <div class="container py-4">
 
-    <!-- PROFILE -->
-    <div class="card profile-card shadow mb-4">
+<!-- PROFILE -->
+<div class="card profile-card shadow mb-4">
 
-        <div class="card-body p-4">
+    <div class="card-body p-4">
 
-            <div class="row align-items-center">
+        <div class="row align-items-center">
 
-                <div class="col-md-2 text-center">
-
-                    <div class="avatar">
-                        {{ teacher.full_name[0] if teacher.full_name else 'T' }}
-                    </div>
-
+            <div class="col-md-2 text-center">
+                <div class="avatar">
+                    {{ teacher.full_name[0] if teacher.full_name else 'T' }}
                 </div>
-
-                <div class="col-md-10">
-
-                    <h2 class="mb-1">{{ teacher.full_name }}</h2>
-
-                    <p class="mb-0">
-                        Teacher ID:
-                        <strong>{{ teacher.teacher_role_id }}</strong>
-                    </p>
-
-                </div>
-
             </div>
 
-        </div>
-
-    </div>
-
-    <!-- STATS -->
-    <div class="row">
-
-        <div class="col-md-3 mb-3">
-            <div class="stat-card stat-1 p-4 shadow">
-                <h2>{{ assignments|length }}</h2>
-                <p class="mb-0">Assignments</p>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="stat-card stat-2 p-4 shadow">
-                <h2>{{ total_classes }}</h2>
-                <p class="mb-0">Classes</p>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="stat-card stat-3 p-4 shadow">
-                <h2>{{ total_subjects }}</h2>
-                <p class="mb-0">Subjects</p>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="stat-card stat-4 p-4 shadow">
-                <h2>{{ total_students }}</h2>
-                <p class="mb-0">Students</p>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- CLASSES -->
-    <div class="card shadow border-0 mt-3">
-
-        <div class="card-header bg-white">
-            <h5 class="mb-0">My Classes & Subjects</h5>
-        </div>
-
-        <div class="card-body">
-
-            <div class="row">
-
-                {% for item in assignments %}
-
-                <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
-
-                    <div class="class-card shadow">
-
-                        <div class="class-header">
-                            <h5 class="mb-0">{{ item.class_name }}</h5>
-                        </div>
-
-                        <div class="p-3">
-
-                            <p class="mb-2">
-                                <strong>Section:</strong>
-                                <span class="badge badge-soft">{{ item.section_name }}</span>
-                            </p>
-
-                            <p class="mb-2">
-                                <strong>Subject:</strong>
-                                <span class="badge bg-success">{{ item.subject_name }}</span>
-                            </p>
-
-                            <p class="mb-3">
-                                <strong>Students:</strong>
-                                <span class="badge bg-dark">{{ item.student_count if item.student_count else 0 }}</span>
-                            </p>
-
-                            <a href="{{ url_for('main.class_students', assignment_id=item.assignment_id) }}"
-                               class="btn btn-primary w-100">
-
-                                <i class="fa fa-users me-2"></i>
-                                View Students
-
-                            </a>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                {% endfor %}
-
-                {% if assignments|length == 0 %}
-                <div class="text-center py-5">
-                    <h5 class="text-muted">No Assignments Found</h5>
-                </div>
-                {% endif %}
-
+            <div class="col-md-10">
+                <h2 class="mb-1">{{ teacher.full_name }}</h2>
+                <p class="mb-0">
+                    Teacher ID: <strong>{{ teacher.teacher_role_id }}</strong>
+                </p>
             </div>
 
         </div>
@@ -221,6 +136,244 @@ body{
     </div>
 
 </div>
+
+<!-- LIVE CLOCK + DEADLINE -->
+<div class="row mb-4">
+
+
+
+   <div class="col-md-12 mb-3">
+    <div class="deadline-box">
+
+        <h6>Result Deadline</h6>
+
+        <p class="mb-1">
+            From: <strong id="startTime">{{ start_time or 'N/A' }}</strong>
+        </p>
+
+        <p class="mb-2">
+            To: <strong id="endTime">{{ end_time or 'N/A' }}</strong>
+        </p>
+
+        <!-- 🔥 COUNTDOWN -->
+        <div id="countdown" style="font-size:18px; font-weight:bold; margin:10px 0;">
+            Loading...
+        </div>
+
+        
+        <span id="deadlineStatus" class="badge bg-success" style="display: none;">
+            OPEN
+        </span>
+
+    </div>
+</div>
+
+
+
+</div>
+
+<!-- STATS -->
+<div class="row">
+
+    <div class="col-md-3 mb-3">
+        <div class="stat-card stat-1 p-4 shadow">
+            <h2>{{ assignments|length }}</h2>
+            <p>Assignments</p>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="stat-card stat-2 p-4 shadow">
+            <h2>{{ total_classes }}</h2>
+            <p>Classes</p>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="stat-card stat-3 p-4 shadow">
+            <h2>{{ total_subjects }}</h2>
+            <p>Subjects</p>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="stat-card stat-4 p-4 shadow">
+            <h2>{{ total_students }}</h2>
+            <p>Students</p>
+        </div>
+    </div>
+
+</div>
+
+<!-- CLASSES -->
+<div class="card shadow border-0 mt-3">
+
+    <div class="card-header bg-white">
+        <h5 class="mb-0">My Classes & Subjects</h5>
+    </div>
+
+    <div class="card-body">
+
+        <div class="row">
+
+            {% for item in assignments %}
+
+            <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
+
+                <div class="class-card shadow">
+
+                    <div class="class-header">
+                        <h5 class="mb-0">{{ item.class_name }}</h5>
+                    </div>
+
+                    <div class="p-3">
+
+                        <p>
+                            <strong>Section:</strong>
+                            <span class="badge badge-soft">{{ item.section_name }}</span>
+                        </p>
+
+                        <p>
+                            <strong>Subject:</strong>
+                            <span class="badge bg-success">{{ item.subject_name }}</span>
+                        </p>
+
+                        <p>
+                            <strong>Students:</strong>
+                            <span class="badge bg-dark">{{ item.student_count }}</span>
+                        </p>
+
+                        <a href="{{ url_for('main.class_students', assignment_id=item.assignment_id) }}"
+                           class="btn btn-primary w-100">
+
+                            <i class="fa fa-users me-2"></i>
+                            View Students
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+
+<!-- JS -->
+<script>
+
+// =========================
+// CLOCK
+// =========================
+
+
+// =========================
+// DEADLINE SAFE CHECK
+// =========================
+function checkDeadline(){
+
+    let startText = document.getElementById("startTime").innerText;
+    let endText = document.getElementById("endTime").innerText;
+
+    if(startText === "N/A" || endText === "N/A") return;
+
+    let start = new Date(startText);
+    let end = new Date(endText);
+    let now = new Date();
+
+    let status = document.getElementById("deadlineStatus");
+
+    if(now >= start && now <= end){
+        status.innerText = "OPEN";
+        status.className = "badge badge-live";
+    } else {
+        status.innerText = "CLOSED";
+        status.className = "badge badge-closed";
+    }
+}
+
+setInterval(checkDeadline, 1000);
+checkDeadline();
+
+
+// =========================
+// FORMAT (PLURAL FIX)
+// =========================
+function formatTime(value, label){
+
+    if(value === 1){
+        return `${value}${label}`;
+    }
+    return `${value}${label}`;
+}
+
+
+// =========================
+// COUNTDOWN
+// =========================
+function startCountdown() {
+
+    let endText = document.getElementById("endTime").innerText;
+
+    if (!endText || endText === "N/A") {
+        document.getElementById("countdown").innerText = "No Deadline Set";
+        document.getElementById("deadlineStatus").innerText = "NO DEADLINE";
+        document.getElementById("deadlineStatus").className = "badge bg-secondary";
+        return;
+    }
+
+    let endTime = new Date(endText);
+
+    function update() {
+
+        let now = new Date();
+        let diff = endTime - now;
+
+        let countdownEl = document.getElementById("countdown");
+        let statusEl = document.getElementById("deadlineStatus");
+
+        if (diff <= 0) {
+            countdownEl.innerText = "⛔ Deadline Passed";
+
+            statusEl.innerText = "CLOSED";
+            statusEl.className = "badge bg-danger";
+
+            return;
+        }
+
+        // calculations
+        let days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        let hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        let minutes = Math.floor((diff / (1000 * 60)) % 60);
+        let seconds = Math.floor((diff / 1000) % 60);
+
+        // =========================
+        // PLURAL FIX HERE ONLY
+        // =========================
+        countdownEl.innerText =
+            `${formatTime(days, "d")} : ${formatTime(hours, "h")} : ${formatTime(minutes, "m")} : ${formatTime(seconds, "s")}`;
+
+        // status live update
+        statusEl.innerText = "OPEN";
+        statusEl.className = "badge bg-success";
+    }
+
+    update();
+    setInterval(update, 1000);
+}
+
+startCountdown();
+
+</script>
+
 
 </body>
 </html>

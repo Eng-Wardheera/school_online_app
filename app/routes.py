@@ -72,6 +72,49 @@ def index():
             flash("Teacher ID lama helin!", "danger")
             return redirect(url_for('main.index'))
 
+        # =========================
+        # GET ASSIGNMENT DEADLINE
+        # =========================
+        assignment = mongo.db.teacher_assignments.find_one({
+            "teacher_id": teacher["_id"]
+        })
+
+        if assignment and assignment.get("start_time") and assignment.get("end_time"):
+
+            start = assignment["start_time"]
+            end = assignment["end_time"]
+            now = datetime.utcnow()
+
+            # =========================
+            # NOT STARTED
+            # =========================
+            if now < start:
+
+                diff = start - now
+
+                d = diff.days
+                h = diff.seconds // 3600
+                m = (diff.seconds % 3600) // 60
+                s = diff.seconds % 60
+
+                flash(
+                    f"⏳ Wali lama gaarin waqtiga login-ka! "
+                    f"Waxa harsan: {d}d : {h}h : {m}m : {s}s",
+                    "warning"
+                )
+                return redirect(url_for('main.index'))
+
+            # =========================
+            # EXPIRED
+            # =========================
+            if now > end:
+
+                flash("⛔ Waqtiga login-ka wuu kaa dhacay!", "danger")
+                return redirect(url_for('main.index'))
+
+        # =========================
+        # ALLOW LOGIN
+        # =========================
         return redirect(
             url_for(
                 'main.teacher_dashboard',
@@ -79,15 +122,16 @@ def index():
             )
         )
 
-    return render_template(
-        "frontend/home/index.html"
-    )
+    return render_template("frontend/home/index.html")
 
 
 
 @bp.route('/teacher-dashboard/<teacher_id>')
 def teacher_dashboard(teacher_id):
 
+    # =========================
+    # TEACHER
+    # =========================
     teacher = mongo.db.teachers.find_one({
         "_id": ObjectId(teacher_id)
     })
@@ -95,6 +139,9 @@ def teacher_dashboard(teacher_id):
     if not teacher:
         return abort(404)
 
+    # =========================
+    # ASSIGNMENTS
+    # =========================
     assignments_db = list(
         mongo.db.teacher_assignments.find({
             "teacher_id": ObjectId(teacher_id)
@@ -102,61 +149,107 @@ def teacher_dashboard(teacher_id):
     )
 
     assignments = []
+
     class_ids = set()
     subject_ids = set()
 
     total_students = 0
-    class_stats_map = {}  # 🔥 NEW: class-wise student count
+
+    # =========================
+    # CLASS STATS
+    # =========================
+    class_stats_map = {}
 
     for a in assignments_db:
 
-        class_doc = mongo.db.classrooms.find_one({"_id": a.get("class_id")})
-        subject_doc = mongo.db.subjects.find_one({"_id": a.get("subject_id")})
+        # SAFE OBJECT IDS
+        class_id = a.get("class_id")
+        subject_id = a.get("subject_id")
+        section_id = a.get("section_id")
+
+        class_doc = mongo.db.classrooms.find_one({"_id": class_id})
+        subject_doc = mongo.db.subjects.find_one({"_id": subject_id})
 
         section_doc = None
-        if a.get("section_id"):
-            section_doc = mongo.db.sections.find_one({
-                "_id": a.get("section_id")
-            })
-
-        class_id_str = str(a.get("class_id"))
+        if section_id:
+            section_doc = mongo.db.sections.find_one({"_id": section_id})
 
         # =========================
-        # STUDENT COUNT PER CLASS
+        # STUDENT COUNT
         # =========================
-        student_query = {
-            "class_id": a.get("class_id")
-        }
+        student_query = {"class_id": class_id}
 
-        if a.get("section_id"):
-            student_query["section_id"] = a.get("section_id")
+        if section_id:
+            student_query["section_id"] = section_id
 
         count_students = mongo.db.students.count_documents(student_query)
-
         total_students += count_students
 
-        # store per class stats
+        # =========================
+        # CLASS NAME
+        # =========================
         class_name = class_doc.get("class_name") if class_doc else "N/A"
 
+        # =========================
+        # CLASS STATS MAP (FIXED)
+        # =========================
         if class_name not in class_stats_map:
-            class_stats_map[class_name] = 0
+            class_stats_map[class_name] = {
+                "students": 0,
+                "sections": set(),
+                "subjects": set()
+            }
 
-        class_stats_map[class_name] += count_students
+        class_stats_map[class_name]["students"] += count_students
 
-        # sets
-        if a.get("class_id"):
-            class_ids.add(class_id_str)
+        if section_doc:
+            class_stats_map[class_name]["sections"].add(
+                section_doc.get("section_name", "N/A")
+            )
 
-        if a.get("subject_id"):
-            subject_ids.add(str(a.get("subject_id")))
+        if subject_doc:
+            class_stats_map[class_name]["subjects"].add(
+                subject_doc.get("subject_name", "N/A")
+            )
 
+        # =========================
+        # TRACK GLOBALS
+        # =========================
+        if class_id:
+            class_ids.add(str(class_id))
+
+        if subject_id:
+            subject_ids.add(str(subject_id))
+
+        # =========================
+        # DEADLINE (IMPORTANT ADDITION)
+        # =========================
+        start_time = a.get("start_time")
+        end_time = a.get("end_time")
+
+        # =========================
+        # BUILD ASSIGNMENT
+        # =========================
         assignments.append({
             "assignment_id": str(a["_id"]),
             "class_name": class_name,
             "section_name": section_doc.get("section_name") if section_doc else "No Section",
             "subject_name": subject_doc.get("subject_name") if subject_doc else "N/A",
-            "student_count": count_students  # 🔥 NEW per assignment
+            "student_count": count_students,
+
+    
         })
+
+        # GET GLOBAL DEADLINE (from first assignment that has it)
+        deadline_assignment = mongo.db.teacher_assignments.find_one({
+            "teacher_id": ObjectId(teacher_id),
+            "start_time": {"$ne": None},
+            "end_time": {"$ne": None}
+        })
+
+        start_time = deadline_assignment.get("start_time") if deadline_assignment else None
+        end_time = deadline_assignment.get("end_time") if deadline_assignment else None
+
 
     return render_template(
         "frontend/pages/teacher/dashboard.html",
@@ -169,7 +262,9 @@ def teacher_dashboard(teacher_id):
         total_classes=len(class_ids),
         total_subjects=len(subject_ids),
         total_students=total_students,
-        class_stats=class_stats_map   # 🔥 NEW
+        class_stats=class_stats_map,
+         start_time=start_time,
+        end_time=end_time
     )
 
 
@@ -1496,6 +1591,90 @@ def delete_assignment(assignment_id):
 
     return redirect(url_for('main.all_teacher_assignments'))
 
+
+
+
+@bp.route('/add-result-deadline', methods=['POST'])
+@login_required
+def add_result_deadline():
+
+    start_time_str = request.form.get("start_time")
+    end_time_str = request.form.get("end_time")
+
+    if not start_time_str or not end_time_str:
+        flash("Start and End time required", "danger")
+        return redirect(request.referrer)
+
+    try:
+        start_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M")
+        end_time = datetime.strptime(end_time_str, "%Y-%m-%dT%H:%M")
+    except ValueError:
+        flash("Invalid datetime format", "danger")
+        return redirect(request.referrer)
+
+    if end_time <= start_time:
+        flash("End time must be after start time", "danger")
+        return redirect(request.referrer)
+
+    mongo.db.teacher_assignments.update_many(
+        {},
+        {
+            "$set": {
+                "start_time": start_time,
+                "end_time": end_time,
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+    flash("Deadline assigned successfully!", "success")
+    return redirect(request.referrer)
+
+
+@bp.route('/remove-result-deadline', methods=['POST'])
+@login_required
+def remove_result_deadline():
+
+    # =========================
+    # REMOVE DEADLINE FIELDS
+    # =========================
+    mongo.db.teacher_assignments.update_many(
+        {},
+        {
+            "$unset": {
+                "start_time": "",
+                "end_time": ""
+            },
+            "$set": {
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+    flash("⛔ Deadline successfully removed from all assignments!", "success")
+    return redirect(request.referrer or url_for('main.index'))
+
+
+
+@bp.route('/remove-result-deadline/<teacher_id>', methods=['POST'])
+@login_required
+def remove_teacher_deadline(teacher_id):
+
+    mongo.db.teacher_assignments.update_many(
+        {"teacher_id": ObjectId(teacher_id)},
+        {
+            "$unset": {
+                "start_time": "",
+                "end_time": ""
+            },
+            "$set": {
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+    flash("Deadline removed for this teacher!", "success")
+    return redirect(request.referrer)
 
 
 
