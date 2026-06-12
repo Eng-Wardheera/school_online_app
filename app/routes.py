@@ -54,8 +54,6 @@ def create_guest_session(mongo):
 #--------------- Forntend Section
 #-======================================
 
-from flask import render_template, request, redirect, url_for, flash
-from bson import ObjectId
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
@@ -73,44 +71,48 @@ def index():
             return redirect(url_for('main.index'))
 
         # =========================
-        # GET ASSIGNMENT DEADLINE
+        # GET ASSIGNMENT
         # =========================
         assignment = mongo.db.teacher_assignments.find_one({
             "teacher_id": teacher["_id"]
         })
 
-        if assignment and assignment.get("start_time") and assignment.get("end_time"):
+        # =========================
+        # VALIDATION: NO DEADLINE
+        # =========================
+        if not assignment or not assignment.get("start_time") or not assignment.get("end_time"):
+            flash("⚠️ Not exam ready!", "warning")
+            return redirect(url_for('main.index'))
 
-            start = assignment["start_time"]
-            end = assignment["end_time"]
-            now = datetime.utcnow()
+        start = assignment["start_time"]
+        end = assignment["end_time"]
+        now = datetime.utcnow()
 
-            # =========================
-            # NOT STARTED
-            # =========================
-            if now < start:
+        # =========================
+        # NOT STARTED
+        # =========================
+        if now < start:
 
-                diff = start - now
+            diff = start - now
 
-                d = diff.days
-                h = diff.seconds // 3600
-                m = (diff.seconds % 3600) // 60
-                s = diff.seconds % 60
+            d = diff.days
+            h = diff.seconds // 3600
+            m = (diff.seconds % 3600) // 60
+            s = diff.seconds % 60
 
-                flash(
-                    f"⏳ Wali lama gaarin waqtiga login-ka! "
-                    f"Waxa harsan: {d}d : {h}h : {m}m : {s}s",
-                    "warning"
-                )
-                return redirect(url_for('main.index'))
+            flash(
+                f"⏳ Wali lama gaarin waqtiga login-ka! "
+                f"Waxa harsan: {d}d : {h}h : {m}m : {s}s",
+                "warning"
+            )
+            return redirect(url_for('main.index'))
 
-            # =========================
-            # EXPIRED
-            # =========================
-            if now > end:
-
-                flash("⛔ Waqtiga login-ka wuu kaa dhacay!", "danger")
-                return redirect(url_for('main.index'))
+        # =========================
+        # EXPIRED
+        # =========================
+        if now > end:
+            flash("⛔ Waqtiga login-ka wuu kaa dhacay!", "danger")
+            return redirect(url_for('main.index'))
 
         # =========================
         # ALLOW LOGIN
