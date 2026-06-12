@@ -219,7 +219,6 @@ def class_students(assignment_id):
 
 
 @bp.route('/save-bulk-results', methods=['POST'])
-@login_required
 def save_bulk_results():
 
     assignment_id = request.form.get('assignment_id')
