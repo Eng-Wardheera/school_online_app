@@ -173,13 +173,18 @@ def teacher_dashboard(teacher_id):
     )
 
 
-
 @bp.route('/class-students/<assignment_id>', methods=['GET'])
 def class_students(assignment_id):
 
-    assignment = mongo.db.teacher_assignments.find_one({
-        "_id": ObjectId(assignment_id)
-    })
+    # =========================
+    # ASSIGNMENT
+    # =========================
+    try:
+        assignment = mongo.db.teacher_assignments.find_one({
+            "_id": ObjectId(assignment_id)
+        })
+    except:
+        return abort(404)
 
     if not assignment:
         return abort(404)
@@ -187,12 +192,18 @@ def class_students(assignment_id):
     # =========================
     # STUDENTS
     # =========================
-    query = {"class_id": assignment["class_id"]}
+    query = {
+        "class_id": assignment["class_id"]
+    }
 
     if assignment.get("section_id"):
         query["section_id"] = assignment["section_id"]
 
     students = list(mongo.db.students.find(query))
+
+    # convert ids for frontend safety
+    for s in students:
+        s["id_str"] = str(s["_id"])
 
     # =========================
     # SUBJECT
@@ -210,37 +221,35 @@ def class_students(assignment_id):
         "_id": assignment["teacher_id"]
     })
 
-    # =========================
-    # CLASS NAME (SAFE FIX)
-    # =========================
-    class_doc = mongo.db.classrooms.find_one({
-        "_id": assignment["class_id"]
-    })
-
-    class_name = class_doc.get("class_name") if class_doc else "N/A"
 
     # =========================
-    # RESULTS MAP
+    # RESULTS (🔥 FIXED PROPERLY)
     # =========================
+     # subject + teacher
+    subject = mongo.db.subjects.find_one({"_id": assignment["subject_id"]})
+    teacher = mongo.db.teachers.find_one({"_id": assignment["teacher_id"]})
+
+    # 🔥 LOAD EXISTING RESULTS (IMPORTANT FIX)
     results = mongo.db.results.find({
         "teacher_id": assignment["teacher_id"],
-        "subject_id": assignment["subject_id"],
-        "assignment_id": assignment["_id"]
+        "subject_id": assignment["subject_id"]
     })
 
-    result_map = {
-        str(r["student_id"]): r.get("score", 0)
-        for r in results
-    }
+    # convert to map for fast lookup
+    result_map = {}
+    for r in results:
+        result_map[str(r["student_id"])] = r["score"]
 
     return render_template(
         "frontend/pages/teacher/class_students.html",
         students=students,
+        subject_name=subject_name,
         assignment=assignment,
         subject=subject,
         teacher=teacher,
-        class_name=class_name,
-        subject_name=subject_name,   # 🔥 FIXED
+        class_name=mongo.db.classrooms.find_one(
+            {"_id": assignment["class_id"]}
+        )["class_name"],
         result_map=result_map
     )
 
@@ -250,10 +259,6 @@ def class_students(assignment_id):
 def save_bulk_results():
 
     assignment_id = request.form.get('assignment_id')
-    scores = request.form.get('scores')
-
-    # Flask sends dict-like form → use request.form.to_dict(flat=False)
-    scores = request.form.to_dict(flat=False)
 
     assignment = mongo.db.teacher_assignments.find_one({
         "_id": ObjectId(assignment_id)
@@ -263,30 +268,80 @@ def save_bulk_results():
         return abort(404)
 
     created = 0
+    updated = 0
+    errors = []
 
     for key, value in request.form.items():
 
-        if key.startswith("scores["):
+        if not key.startswith("scores["):
+            continue
 
-            student_id = key.replace("scores[", "").replace("]", "")
-            score = value
+        student_id = key.replace("scores[", "").replace("]", "").strip()
+        score = value.strip()
 
-            if score:
+        # =========================
+        # VALIDATION
+        # =========================
+        if score == "":
+            continue  # ignore empty (DO NOT ERROR)
 
-                mongo.db.results.insert_one({
-                    "student_id": ObjectId(student_id),
-                    "teacher_id": assignment["teacher_id"],
-                    "subject_id": assignment["subject_id"],
-                    "score": int(score),
-                    "exam_date": datetime.utcnow(),
-                    "created_at": datetime.utcnow(),
+        try:
+            score = int(score)
+        except:
+            errors.append(f"Student {student_id}: invalid number")
+            continue
+
+        if score < 0 or score > 50:
+            errors.append(f"Student {student_id}: out of range")
+            continue
+
+        # =========================
+        # CHECK EXISTING RESULT
+        # =========================
+        existing = mongo.db.results.find_one({
+            "student_id": ObjectId(student_id),
+            "assignment_id": assignment["_id"]
+        })
+
+        # =========================
+        # UPDATE OR INSERT
+        # =========================
+        if existing:
+
+            mongo.db.results.update_one(
+                {"_id": existing["_id"]},
+                {"$set": {
+                    "score": score,
                     "updated_at": datetime.utcnow()
-                })
+                }}
+            )
+            updated += 1
 
-                created += 1
+        else:
 
-    flash(f"{created} results saved successfully!", "success")
-    return redirect(url_for('main.class_students', assignment_id=assignment_id))  
+            mongo.db.results.insert_one({
+                "student_id": ObjectId(student_id),
+                "teacher_id": assignment["teacher_id"],
+                "subject_id": assignment["subject_id"],
+                "class_id": assignment["class_id"],
+                "section_id": assignment.get("section_id"),
+                "assignment_id": assignment["_id"],
+                "score": score,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            })
+
+            created += 1
+
+    # =========================
+    # FLASH MESSAGE
+    # =========================
+    if errors:
+        flash(f"Saved with {len(errors)} errors!", "warning")
+    else:
+        flash(f"{created} created, {updated} updated successfully!", "success")
+
+    return redirect(url_for('main.class_students', assignment_id=assignment_id))
 
 
 
