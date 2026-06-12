@@ -69,17 +69,33 @@
 
 <!-- SEARCH + FILTER -->
 <div class="card border-0 shadow-sm mb-3">
-    <div class="card-body d-flex flex-wrap gap-2">
+    <div class="card-body">
 
-        <input type="text" id="searchInput"
-               class="form-control"
-               placeholder="Search student name or role no...">
+        <div class="row g-2 align-items-center">
 
-        <select id="statusFilter" class="form-select" style="max-width:200px;">
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-        </select>
+            <!-- SEARCH -->
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-white">
+                        <i class="bi bi-search"></i>
+                    </span>
+
+                    <input type="text" id="searchInput"
+                           class="form-control"
+                           placeholder="Search student name or role no...">
+                </div>
+            </div>
+
+            <!-- FILTER -->
+            <div class="col-md-4">
+                <select id="statusFilter" class="form-select">
+                    <option value="all">All Students</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+
+        </div>
 
     </div>
 </div>
