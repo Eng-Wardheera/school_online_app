@@ -86,6 +86,7 @@ def index():
 
 
 @bp.route('/teacher-dashboard/<teacher_id>')
+@login_required
 def teacher_dashboard(teacher_id):
 
     teacher = mongo.db.teachers.find_one({
@@ -102,37 +103,28 @@ def teacher_dashboard(teacher_id):
     )
 
     assignments = []
-
     class_ids = set()
     subject_ids = set()
 
     total_students = 0
+    class_stats_map = {}  # 🔥 NEW: class-wise student count
 
     for a in assignments_db:
 
-        class_doc = mongo.db.classrooms.find_one({
-            "_id": a.get("class_id")
-        })
-
-        subject_doc = mongo.db.subjects.find_one({
-            "_id": a.get("subject_id")
-        })
+        class_doc = mongo.db.classrooms.find_one({"_id": a.get("class_id")})
+        subject_doc = mongo.db.subjects.find_one({"_id": a.get("subject_id")})
 
         section_doc = None
-
         if a.get("section_id"):
             section_doc = mongo.db.sections.find_one({
                 "_id": a.get("section_id")
             })
 
-        # count stats
-        if a.get("class_id"):
-            class_ids.add(str(a.get("class_id")))
+        class_id_str = str(a.get("class_id"))
 
-        if a.get("subject_id"):
-            subject_ids.add(str(a.get("subject_id")))
-
-        # count students
+        # =========================
+        # STUDENT COUNT PER CLASS
+        # =========================
         student_query = {
             "class_id": a.get("class_id")
         }
@@ -140,21 +132,31 @@ def teacher_dashboard(teacher_id):
         if a.get("section_id"):
             student_query["section_id"] = a.get("section_id")
 
-        total_students += mongo.db.students.count_documents(
-            student_query
-        )
+        count_students = mongo.db.students.count_documents(student_query)
+
+        total_students += count_students
+
+        # store per class stats
+        class_name = class_doc.get("class_name") if class_doc else "N/A"
+
+        if class_name not in class_stats_map:
+            class_stats_map[class_name] = 0
+
+        class_stats_map[class_name] += count_students
+
+        # sets
+        if a.get("class_id"):
+            class_ids.add(class_id_str)
+
+        if a.get("subject_id"):
+            subject_ids.add(str(a.get("subject_id")))
 
         assignments.append({
             "assignment_id": str(a["_id"]),
-            "class_name": class_doc.get("class_name") if class_doc else "N/A",
-            "section_name": (
-                section_doc.get("section_name")
-                if section_doc else "No Section"
-            ),
-            "subject_name": (
-                subject_doc.get("subject_name")
-                if subject_doc else "N/A"
-            )
+            "class_name": class_name,
+            "section_name": section_doc.get("section_name") if section_doc else "No Section",
+            "subject_name": subject_doc.get("subject_name") if subject_doc else "N/A",
+            "student_count": count_students  # 🔥 NEW per assignment
         })
 
     return render_template(
@@ -167,11 +169,14 @@ def teacher_dashboard(teacher_id):
         assignments=assignments,
         total_classes=len(class_ids),
         total_subjects=len(subject_ids),
-        total_students=total_students
+        total_students=total_students,
+        class_stats=class_stats_map   # 🔥 NEW
     )
 
 
+
 @bp.route('/class-students/<assignment_id>', methods=['GET'])
+@login_required
 def class_students(assignment_id):
 
     assignment = mongo.db.teacher_assignments.find_one({
@@ -181,7 +186,9 @@ def class_students(assignment_id):
     if not assignment:
         return abort(404)
 
-    # students
+    # =========================
+    # STUDENTS
+    # =========================
     query = {"class_id": assignment["class_id"]}
 
     if assignment.get("section_id"):
@@ -189,20 +196,44 @@ def class_students(assignment_id):
 
     students = list(mongo.db.students.find(query))
 
-    # subject + teacher
-    subject = mongo.db.subjects.find_one({"_id": assignment["subject_id"]})
-    teacher = mongo.db.teachers.find_one({"_id": assignment["teacher_id"]})
-
-    # 🔥 LOAD EXISTING RESULTS (IMPORTANT FIX)
-    results = mongo.db.results.find({
-        "teacher_id": assignment["teacher_id"],
-        "subject_id": assignment["subject_id"]
+    # =========================
+    # SUBJECT
+    # =========================
+    subject = mongo.db.subjects.find_one({
+        "_id": assignment["subject_id"]
     })
 
-    # convert to map for fast lookup
-    result_map = {}
-    for r in results:
-        result_map[str(r["student_id"])] = r["score"]
+    subject_name = subject.get("subject_name") if subject else "N/A"
+
+    # =========================
+    # TEACHER
+    # =========================
+    teacher = mongo.db.teachers.find_one({
+        "_id": assignment["teacher_id"]
+    })
+
+    # =========================
+    # CLASS NAME (SAFE FIX)
+    # =========================
+    class_doc = mongo.db.classrooms.find_one({
+        "_id": assignment["class_id"]
+    })
+
+    class_name = class_doc.get("class_name") if class_doc else "N/A"
+
+    # =========================
+    # RESULTS MAP
+    # =========================
+    results = mongo.db.results.find({
+        "teacher_id": assignment["teacher_id"],
+        "subject_id": assignment["subject_id"],
+        "assignment_id": assignment["_id"]
+    })
+
+    result_map = {
+        str(r["student_id"]): r.get("score", 0)
+        for r in results
+    }
 
     return render_template(
         "frontend/pages/teacher/class_students.html",
@@ -210,9 +241,8 @@ def class_students(assignment_id):
         assignment=assignment,
         subject=subject,
         teacher=teacher,
-        class_name=mongo.db.classrooms.find_one(
-            {"_id": assignment["class_id"]}
-        )["class_name"],
+        class_name=class_name,
+        subject_name=subject_name,   # 🔥 FIXED
         result_map=result_map
     )
 
