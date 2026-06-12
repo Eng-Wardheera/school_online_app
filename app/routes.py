@@ -86,7 +86,6 @@ def index():
 
 
 @bp.route('/teacher-dashboard/<teacher_id>')
-@login_required
 def teacher_dashboard(teacher_id):
 
     teacher = mongo.db.teachers.find_one({
@@ -176,7 +175,6 @@ def teacher_dashboard(teacher_id):
 
 
 @bp.route('/class-students/<assignment_id>', methods=['GET'])
-@login_required
 def class_students(assignment_id):
 
     assignment = mongo.db.teacher_assignments.find_one({
