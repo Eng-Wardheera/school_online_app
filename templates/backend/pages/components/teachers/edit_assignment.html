@@ -1,0 +1,138 @@
+{% extends 'backend/home/base.html' %}
+
+{% block title %}Edit Teacher Assignment{% endblock %}
+
+{% block content %}
+
+<div class="main-content mt-4">
+
+```
+<form method="POST">
+
+    <div class="card">
+
+        <div class="card-header">
+            <h5>Edit Teacher Assignment</h5>
+        </div>
+
+        <div class="card-body">
+
+            <div class="row">
+
+                <!-- TEACHER -->
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Teacher</label>
+
+                    <select name="teacher_id"
+                            class="form-select"
+                            required>
+
+                        <option value="">Select Teacher</option>
+
+                        {% for t in teachers %}
+                        <option value="{{ t._id }}"
+                            {% if assignment.teacher_id|string == t._id|string %}
+                            selected
+                            {% endif %}>
+                            {{ t.full_name }}
+                        </option>
+                        {% endfor %}
+
+                    </select>
+                </div>
+
+                <!-- CLASS -->
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Class</label>
+
+                    <select name="class_id"
+                            class="form-select"
+                            required>
+
+                        <option value="">Select Class</option>
+
+                        {% for c in classes %}
+                        <option value="{{ c._id }}"
+                            {% if assignment.class_id|string == c._id|string %}
+                            selected
+                            {% endif %}>
+                            {{ c.class_name }}
+                        </option>
+                        {% endfor %}
+
+                    </select>
+                </div>
+
+                <!-- SECTION -->
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">
+                        Section
+                        <small class="text-muted">(Optional)</small>
+                    </label>
+
+                    <select name="section_id"
+                            class="form-select">
+
+                        <option value="">No Section</option>
+
+                        {% for s in sections %}
+                        <option value="{{ s._id }}"
+                            {% if assignment.section_id and assignment.section_id|string == s._id|string %}
+                            selected
+                            {% endif %}>
+                            {{ s.section_name }}
+                        </option>
+                        {% endfor %}
+
+                    </select>
+                </div>
+
+                <!-- SUBJECT -->
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Subject</label>
+
+                    <select name="subject_id"
+                            class="form-select"
+                            required>
+
+                        <option value="">Select Subject</option>
+
+                        {% for sub in subjects %}
+                        <option value="{{ sub._id }}"
+                            {% if assignment.subject_id|string == sub._id|string %}
+                            selected
+                            {% endif %}>
+                            {{ sub.subject_name }}
+                        </option>
+                        {% endfor %}
+
+                    </select>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card-footer text-center">
+
+            <button type="submit"
+                    class="btn btn-primary">
+                <i class="feather-save me-1"></i>
+                Update Assignment
+            </button>
+
+            <a href="{{ url_for('main.all_teacher_assignments') }}"
+               class="btn btn-secondary">
+                Cancel
+            </a>
+
+        </div>
+
+    </div>
+
+</form>
+```
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends 'backend/home/base.html' %}
+
+{% block title %}All Subjects | School Management System{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+
+    <div class="page-header-left d-flex align-items-center">
+
+        <div class="page-header-title">
+            <h5 class="m-b-10">Subjects Management</h5>
+        </div>
+
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.dashboard') }}">Home</a>
+            </li>
+            <li class="breadcrumb-item">
+                All Subjects
+            </li>
+        </ul>
+
+    </div>
+
+    <div class="page-header-right ms-auto">
+        <a href="{{ url_for('main.add_subject') }}"
+           class="btn btn-primary">
+            <i class="feather-plus me-1"></i>
+            Add Subject
+        </a>
+    </div>
+
+</div>
+
+<div class="main-content">
+
+    <div class="row">
+
+        <div class="col-lg-12">
+
+            <div class="card stretch stretch-full">
+
+                <div class="card-header">
+                    <h5 class="card-title">
+                        Current Subjects
+                    </h5>
+                </div>
+
+                <div class="card-body p-0">
+
+                    <div class="table-responsive">
+
+                        <table class="table table-hover" id="subjectList">
+
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Subject Name</th>
+                                    <th>Created At</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                {% if subjects %}
+
+                                    {% for subject in subjects %}
+                                    <tr>
+
+                                        <td>{{ loop.index }}</td>
+
+                                        <td>
+                                            <div class="d-flex align-items-center gap-3">
+
+                                                <div class="avatar-text bg-soft-primary text-primary rounded-circle wd-50 ht-50 d-flex align-items-center justify-content-center">
+                                                    {{ subject.subject_name[0]|upper }}
+                                                </div>
+
+                                                <div>
+                                                    <span class="fw-bold">
+                                                        {{ subject.subject_name }}
+                                                    </span>
+                                                </div>
+
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            {{ subject.created_at.strftime('%Y-%m-%d') if subject.created_at else 'N/A' }}
+                                        </td>
+
+                                        <td class="text-end">
+
+                                            <div class="hstack gap-1 justify-content-end">
+
+                                                <!-- EDIT -->
+                                                <a href="{{ url_for('main.edit_subject', subject_id=subject.id) }}"
+                                                   class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle"
+                                                   data-bs-toggle="tooltip"
+                                                   title="Edit">
+
+                                                    <i class="feather-edit"></i>
+
+                                                </a>
+
+                                                <!-- DELETE -->
+                                                <form action="{{ url_for('main.delete_subject', subject_id=subject.id) }}"
+                                                      method="POST"
+                                                      class="d-inline">
+
+                                                    <button type="submit"
+                                                            class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
+                                                            onclick="return confirm('Ma hubtaa inaad tirtirayso subject-kan?');">
+
+                                                        <i class="feather-trash-2"></i>
+
+                                                    </button>
+
+                                                </form>
+
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+                                    {% endfor %}
+
+                                {% else %}
+
+                                <tr>
+                                    <td colspan="4" class="text-center p-5">
+
+                                        <i class="feather-book fs-40 text-muted d-block mb-3"></i>
+
+                                        <span class="text-muted">
+                                            Ma jiraan subjects la diiwaangeliyey.
+                                        </span>
+
+                                    </td>
+                                </tr>
+
+                                {% endif %}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

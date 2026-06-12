@@ -1,76 +1,157 @@
-  <nav class="nxl-navigation">
-        <div class="navbar-wrapper">
-            <div class="m-header">
-                 <a href="{{ url_for('main.index') }}" class="b-brand">
-                    <img src=" {{ url_for('static', filename=settings.logo) if settings and settings.logo else  url_for('static', filename='frontend/images/logo-frontend.png') }}" width="200" height="75" class="logo logo-lg" />
-                    <img src="{{ url_for('static', filename=settings.logo2) if settings and settings.logo2 else  url_for('static', filename='frontend/images/logo-frontend.png') }}" width="200" height="75" class="logo logo-sm" />
-                </a>
-            </div>
-            <div class="navbar-content">
+<nav class="nxl-navigation">
 
+    <div class="navbar-wrapper">
 
-                <ul class="nxl-navbar">
-                    <li class="nxl-item nxl-caption">
-                        <label>Navigation</label>
-                    </li>
+        <!-- LOGO -->
+        <div class="m-header">
+            <a href="{{ url_for('main.index') }}" class="b-brand">
 
-                    {% if current_user.is_authenticated %}
-                   
+                <img src="{{ url_for('static', filename=settings.logo) if settings and settings.logo else url_for('static', filename='frontend/images/logo-frontend.png') }}"
+                     width="200" height="75" class="logo logo-lg" />
 
-                    <!-- ================= ADMIN ================= -->
-                     {% if current_user.role in ['superadmin'] %}
-                        <li class="nxl-item nxl-hasmenu">
-                            <a href="{{ url_for('main.dashboard') }}" class="nxl-link">
-                                <span class="nxl-micon"><i class="feather-airplay"></i></span>
-                                <span class="nxl-mtext">Dashboards</span><span class="nxl-arrow"></span>
-                            </a>
-                        
-                        </li>
+                <img src="{{ url_for('static', filename=settings.logo2) if settings and settings.logo2 else url_for('static', filename='frontend/images/logo-frontend.png') }}"
+                     width="200" height="75" class="logo logo-sm" />
 
-                         <li class="nxl-item nxl-hasmenu">
-                            <a href="javascript:void(0);" class="nxl-link">
-                                <span class="nxl-micon"><i class="feather-users"></i></span>
-                                <span class="nxl-mtext">Manage Users</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
-                            </a>
-                            <ul class="nxl-submenu">
-                                <li class="nxl-item"><a class="nxl-link" href="{{ url_for('main.all_users') }}">All Users</a></li>
-                                <li class="nxl-item"><a class="nxl-link" href="{{ url_for('main.add_user') }}">Add New User </a></li>
-                            </ul>
-                        </li>
+            </a>
+        </div>
 
-                        <li class="nxl-item nxl-hasmenu">
-                            <a href="javascript:void(0);" class="nxl-link">
-                                <span class="nxl-micon"><i class="feather-cast"></i></span>
-                                <span class="nxl-mtext">Projects</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
-                            </a>
-                            <ul class="nxl-submenu">
-                                <li class="nxl-item"><a class="nxl-link" href="{{ url_for('main.all_projects') }}">All Projects</a></li>
-                                <li class="nxl-item"><a class="nxl-link" href="{{ url_for('main.add_project') }}">Add Project </a></li>
-                            </ul>
-                        </li>
+        <!-- MENU -->
+        <div class="navbar-content">
 
-                       
+            <ul class="nxl-navbar">
 
+                <li class="nxl-item nxl-caption">
+                    <label>Navigation</label>
+                </li>
 
-                     {% elif current_user.role in ['user'] %}
-                        <!-- ================= USER ================= -->
-                     
+                {% if current_user.is_authenticated %}
 
-                    {% elif current_user.role in 'customer' %}
-                  
-                    {% endif %}
+                <!-- ================= SUPER ADMIN ================= -->
+                {% if current_user.role == 'superadmin' %}
 
-                {% else %}
-                <!-- NOT LOGGED IN -->
+                    <!-- DASHBOARD -->
                     <li class="nxl-item">
-                        <a href="{{ url_for('main.login') }}" class="nxl-link">
-                            <span class="nxl-micon"><i class="feather-log-in"></i></span>
-                            <span class="nxl-mtext">Login</span>
+                        <a href="{{ url_for('main.dashboard') }}" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-airplay"></i></span>
+                            <span class="nxl-mtext">Dashboard</span>
                         </a>
                     </li>
+
+                    <!-- USERS -->
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="javascript:void(0);" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-users"></i></span>
+                            <span class="nxl-mtext">Users</span>
+                            <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li><a class="nxl-link" href="{{ url_for('main.all_users') }}">All Users</a></li>
+                            <li><a class="nxl-link" href="{{ url_for('main.add_user') }}">Add User</a></li>
+                        </ul>
+                    </li>
+
+                    <!-- CLASSES -->
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="#" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-cast"></i></span>
+                            <span class="nxl-mtext">Classes</span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li><a class="nxl-link" href="{{ url_for('main.all_classes') }}">All Classes</a></li>
+                            <li><a class="nxl-link" href="{{ url_for('main.add_class') }}">Add Class</a></li>
+                        </ul>
+                    </li>
+
+                    <!-- SECTIONS -->
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="#" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-grid"></i></span>
+                            <span class="nxl-mtext">Sections</span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li><a class="nxl-link" href="{{ url_for('main.all_sections') }}">All Sections</a></li>
+                            <li><a class="nxl-link" href="{{ url_for('main.add_section') }}">Add Section</a></li>
+                        </ul>
+                    </li>
+
+                    <!-- SUBJECTS -->
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="#" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-book"></i></span>
+                            <span class="nxl-mtext">Subjects</span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li><a class="nxl-link" href="{{ url_for('main.all_subjects') }}">All Subjects</a></li>
+                            <li><a class="nxl-link" href="{{ url_for('main.add_subject') }}">Add Subject</a></li>
+                        </ul>
+                    </li>
+
+                    <!-- TEACHERS -->
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="#" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-user-check"></i></span>
+                            <span class="nxl-mtext">Teachers</span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li><a class="nxl-link" href="{{ url_for('main.all_teachers') }}">All Teachers</a></li>
+                            <li><a class="nxl-link" href="{{ url_for('main.add_teacher') }}">Add Teacher</a></li>
+                        </ul>
+                    </li>
+
+                    <!-- TEACHERS -->
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="#" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-user-check"></i></span>
+                            <span class="nxl-mtext">Teachers Assignments</span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li><a class="nxl-link" href="{{ url_for('main.all_teacher_assignments') }}">All Teachers</a></li>
+                            <li><a class="nxl-link" href="{{ url_for('main.bulk_assign_teacher') }}">Add Teacher</a></li>
+                        </ul>
+                    </li>
+
+                    <!-- STUDENTS -->
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="#" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-users"></i></span>
+                            <span class="nxl-mtext">Students</span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li><a class="nxl-link" href="{{ url_for('main.all_students') }}">All Students</a></li>
+                            <li><a class="nxl-link" href="{{ url_for('main.add_student') }}">Add Student</a></li>
+                        </ul>
+                    </li>
+
                 {% endif %}
-                </ul>
-              
-            </div>
+
+                <!-- ================= NORMAL USER ================= -->
+                {% if current_user.role == 'user' %}
+
+                    <li class="nxl-item">
+                        <a href="{{ url_for('main.dashboard') }}" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-home"></i></span>
+                            <span class="nxl-mtext">Dashboard</span>
+                        </a>
+                    </li>
+
+                {% endif %}
+
+                {% else %}
+
+                <!-- NOT LOGGED IN -->
+                <li class="nxl-item">
+                    <a href="{{ url_for('main.login') }}" class="nxl-link">
+                        <span class="nxl-micon"><i class="feather-log-in"></i></span>
+                        <span class="nxl-mtext">Login</span>
+                    </a>
+                </li>
+
+                {% endif %}
+
+            </ul>
+
         </div>
-    </nav>
+
+    </div>
+
+</nav>

@@ -131,19 +131,32 @@
                                 </div>
                               
                                 
-                                <div class="row mb-4 align-items-center">
-                                    <div class="col-lg-4">
-                                        <label class="fw-semibold">Role: </label>
-                                    </div>
-                                    <div class="col-lg-8">
-                                        <select class="form-control" name="role" data-select2-selector="privacy">
-                                            <option value="" disabled selected>Select Role</option>
-                                            <option value="admin" data-icon="feather-lock">Admin</option>
-                                            <option value="customer" data-icon="feather-users">Customer</option>
-                                            <option value="user" data-icon="feather-user-check">User</option>
-                                        </select>
-                                    </div>
-                                </div>
+                              <div class="row mb-4 align-items-center">
+    <div class="col-lg-4">
+        <label class="fw-semibold">Role:</label>
+    </div>
+    <div class="col-lg-8">
+        <select class="form-control" name="role" required>
+            <option value="" disabled selected>Select Role</option>
+
+            <option value="superadmin">
+                Super Admin
+            </option>
+
+            <option value="admin">
+                Admin
+            </option>
+
+            <option value="teacher">
+                Teacher
+            </option>
+
+            <option value="user">
+                User
+            </option>
+        </select>
+    </div>
+</div>
                            
                                   
                                        

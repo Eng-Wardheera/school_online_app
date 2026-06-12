@@ -1,0 +1,156 @@
+{% extends 'backend/home/base.html' %}
+
+{% block title %}All Classes | School Management System{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+            <h5 class="m-b-10">Classes Management</h5>
+        </div>
+
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.dashboard') }}">Home</a>
+            </li>
+            <li class="breadcrumb-item">
+                All Classes
+            </li>
+        </ul>
+    </div>
+
+    <div class="page-header-right ms-auto">
+        <a href="{{ url_for('main.add_class') }}"
+           class="btn btn-primary">
+            <i class="feather-plus me-1"></i>
+            Add Class
+        </a>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="row">
+
+        <div class="col-lg-12">
+
+            <div class="card stretch stretch-full">
+
+                <div class="card-header">
+                    <h5 class="card-title">
+                        Current Classes
+                    </h5>
+                </div>
+
+                <div class="card-body p-0">
+
+                    <div class="table-responsive">
+
+                        <table class="table table-hover" id="classList">
+
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Class Name</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                {% if classes %}
+
+                                    {% for classroom in classes %}
+                                    <tr>
+
+                                        <td>
+                                            {{ loop.index }}
+                                        </td>
+
+                                        <td>
+                                            <div class="d-flex align-items-center gap-3">
+
+                                                <div class="avatar-text bg-soft-primary text-primary rounded-circle wd-50 ht-50 d-flex align-items-center justify-content-center">
+                                                    {{ classroom.class_name[0]|upper }}
+                                                </div>
+
+                                                <div>
+                                                    <span class="fw-bold">
+                                                        {{ classroom.class_name }}
+                                                    </span>
+                                                </div>
+
+                                            </div>
+                                        </td>
+
+                                        <td class="text-end">
+
+                                            <div class="hstack gap-1 justify-content-end">
+
+                                                <a href="#"
+                                                   class="avatar-text avatar-md bg-soft-info text-info rounded-circle"
+                                                   data-bs-toggle="tooltip"
+                                                   title="View">
+                                                    <i class="feather-eye"></i>
+                                                </a>
+
+                                                <a href="{{ url_for('main.edit_class', class_id=classroom.id) }}"
+                                                   class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle"
+                                                   data-bs-toggle="tooltip"
+                                                   title="Edit">
+                                                    <i class="feather-edit"></i>
+                                                </a>
+
+                                                <form action="{{ url_for('main.delete_class', class_id=classroom.id) }}"
+                                                      method="POST"
+                                                      class="d-inline">
+
+                                                    <button type="submit"
+                                                            class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
+                                                            onclick="return confirm('Ma hubtaa inaad tirtirayso fasalkan?');">
+
+                                                        <i class="feather-trash-2"></i>
+
+                                                    </button>
+
+                                                </form>
+
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+                                    {% endfor %}
+
+                                {% else %}
+
+                                <tr>
+                                    <td colspan="3" class="text-center p-5">
+
+                                        <i class="feather-book-open fs-40 text-muted d-block mb-3"></i>
+
+                                        <span class="text-muted">
+                                            Ma jiraan fasallo la diiwaangeliyey.
+                                        </span>
+
+                                    </td>
+                                </tr>
+
+                                {% endif %}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

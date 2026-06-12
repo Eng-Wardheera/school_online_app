@@ -1,0 +1,139 @@
+{% extends 'backend/home/base.html' %}
+
+{% block title %}All Sections{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-header-left d-flex align-items-center">
+
+        <div class="page-header-title">
+            <h5 class="m-b-10">Sections Management</h5>
+        </div>
+
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.dashboard') }}">Home</a>
+            </li>
+            <li class="breadcrumb-item">All Sections</li>
+        </ul>
+
+    </div>
+
+    <div class="page-header-right ms-auto">
+        <a href="{{ url_for('main.add_section') }}"
+           class="btn btn-primary">
+            <i class="feather-plus me-1"></i>
+            Add Section
+        </a>
+    </div>
+</div>
+
+<div class="main-content">
+
+    <div class="card">
+
+        <div class="card-header">
+            <h5 class="card-title">All Sections</h5>
+        </div>
+
+        <div class="card-body p-0">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover">
+
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Section Name</th>
+                            <th>Class</th>
+                            <th>Created At</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% if sections %}
+
+                            {% for s in sections %}
+                            <tr>
+
+                                <td>{{ loop.index }}</td>
+
+                                <td>
+                                    <span class="fw-bold">
+                                        {{ s.section_name }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span class="badge bg-soft-primary text-primary">
+                                        {{ s.class_name }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {{ s.created_at.strftime('%Y-%m-%d') if s.created_at else 'N/A' }}
+                                </td>
+
+                                <td class="text-end">
+
+                                    <div class="hstack gap-1 justify-content-end">
+
+                                        <!-- EDIT -->
+                                        <a href="{{ url_for('main.edit_section', section_id=s.id) }}"
+                                           class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle"
+                                           title="Edit">
+                                            <i class="feather-edit"></i>
+                                        </a>
+
+                                        <!-- DELETE -->
+                                        <form action="{{ url_for('main.delete_section', section_id=s.id) }}"
+                                              method="POST"
+                                              class="d-inline">
+
+                                            <button type="submit"
+                                                    class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
+                                                    onclick="return confirm('Ma hubtaa inaad tirtirayso section-kan?');">
+
+                                                <i class="feather-trash-2"></i>
+
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+                            {% endfor %}
+
+                        {% else %}
+
+                        <tr>
+                            <td colspan="5" class="text-center p-5">
+                                <i class="feather-layers fs-40 text-muted d-block mb-3"></i>
+                                <span class="text-muted">
+                                    No sections found.
+                                </span>
+                            </td>
+                        </tr>
+
+                        {% endif %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

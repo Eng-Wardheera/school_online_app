@@ -1,0 +1,98 @@
+{% extends 'backend/home/base.html' %}
+
+{% block title %}Edit Student{% endblock %}
+
+{% block content %}
+
+<div class="main-content mt-4">
+
+    <form method="POST">
+
+        <div class="card">
+
+            <div class="card-header">
+                <h5>Edit Student</h5>
+            </div>
+
+            <div class="card-body">
+
+                <!-- FULL NAME -->
+                <div class="mb-3">
+                    <label class="fw-bold">Full Name</label>
+                    <input type="text"
+                           name="full_name"
+                           class="form-control"
+                           value="{{ student.full_name }}"
+                           required>
+                </div>
+
+                <!-- CLASS -->
+                <div class="mb-3">
+                    <label class="fw-bold">Class</label>
+                    <select name="class_id" class="form-select" required>
+
+                        {% for c in classes %}
+                            <option value="{{ c._id }}"
+                                {% if c._id|string == student.class_id|string %}selected{% endif %}>
+                                {{ c.class_name }}
+                            </option>
+                        {% endfor %}
+
+                    </select>
+                </div>
+
+                <!-- SECTION -->
+              <!-- SECTION -->
+<div class="mb-3">
+    <label class="fw-bold">Section (Optional)</label>
+
+    <select name="section_id" class="form-select">
+
+        <option value=""
+            {% if not student.section_id or student.section_id == 'None' %}
+                selected
+            {% endif %}>
+            No Section
+        </option>
+
+        {% for s in sections %}
+        <option value="{{ s._id }}"
+            {% if student.section_id and s._id|string == student.section_id|string %}
+                selected
+            {% endif %}>
+            {{ s.section_name }}
+        </option>
+        {% endfor %}
+
+    </select>
+</div>
+
+                <!-- STATUS -->
+                <div class="mb-3 form-check">
+
+                    <input type="checkbox"
+                           name="status"
+                           class="form-check-input"
+                           {% if student.status %}checked{% endif %}>
+
+                    <label class="form-check-label fw-bold">
+                        Active Student
+                    </label>
+
+                </div>
+
+            </div>
+
+            <div class="card-footer text-center">
+                <button class="btn btn-primary">
+                    Update Student
+                </button>
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}

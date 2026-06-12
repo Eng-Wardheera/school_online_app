@@ -1,0 +1,194 @@
+
+{% extends 'backend/home/base.html' %}
+
+{% block title %}Teacher Assignments{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+
+    <div class="page-header-left d-flex align-items-center">
+
+        <div class="page-header-title">
+            <h5 class="m-b-10">Teacher Assignments</h5>
+        </div>
+
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.dashboard') }}">
+                    Home
+                </a>
+            </li>
+
+            <li class="breadcrumb-item">
+                Teacher Assignments
+            </li>
+        </ul>
+
+    </div>
+
+    <div class="page-header-right ms-auto">
+
+        <a href="{{ url_for('main.bulk_assign_teacher') }}"
+           class="btn btn-primary">
+
+            <i class="feather-plus me-1"></i>
+            Assign Teacher
+
+        </a>
+
+    </div>
+
+</div>
+
+<div class="main-content">
+
+    <div class="card">
+
+        <div class="card-header">
+            <h5 class="card-title">
+                All Teacher Assignments
+            </h5>
+        </div>
+
+        <div class="card-body p-0">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover">
+
+                    <thead>
+
+                        <tr>
+                            <th>#</th>
+                            <th>Teacher</th>
+                            <th>Class</th>
+                            <th>Section</th>
+                            <th>Subject</th>
+                            <th>Date</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% if assignments %}
+
+                            {% for a in assignments %}
+
+                            <tr>
+
+                                <td>
+                                    {{ loop.index }}
+                                </td>
+
+                                <td>
+                                    <span class="fw-bold">
+                                        {{ a.teacher }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span class="badge bg-primary">
+                                        {{ a.class }}
+                                    </span>
+                                </td>
+
+                                <td>
+
+                                    {% if a.section %}
+
+                                        <span class="badge bg-info">
+                                            {{ a.section }}
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="badge bg-secondary">
+                                            No Section
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+                                    <span class="badge bg-success">
+                                        {{ a.subject }}
+                                    </span>
+                                </td>
+
+                                <td>
+                                    {{ a.created_at.strftime('%Y-%m-%d') if a.created_at else 'N/A' }}
+                                </td>
+
+                                <td class="text-end">
+
+                                    <div class="hstack gap-1 justify-content-end">
+
+                                        <!-- EDIT -->
+                                        <a href="{{ url_for('main.edit_assignment', assignment_id=a.id) }}"
+                                           class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle"
+                                           data-bs-toggle="tooltip"
+                                           title="Edit">
+
+                                            <i class="feather-edit"></i>
+
+                                        </a>
+
+                                        <!-- DELETE -->
+                                        <form action="{{ url_for('main.delete_assignment', assignment_id=a.id) }}"
+                                              method="POST"
+                                              class="d-inline">
+
+                                            <button type="submit"
+                                                    class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
+                                                    onclick="return confirm('Ma hubtaa inaad tirtirayso assignment-kan?');">
+
+                                                <i class="feather-trash-2"></i>
+
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        {% else %}
+
+                        <tr>
+
+                            <td colspan="7" class="text-center p-5">
+
+                                <i class="feather-user-check fs-40 text-muted d-block mb-3"></i>
+
+                                <span class="text-muted">
+                                    No teacher assignments found.
+                                </span>
+
+                            </td>
+
+                        </tr>
+
+                        {% endif %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+

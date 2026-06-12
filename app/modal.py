@@ -7,11 +7,12 @@ from app import now_eat
 
 
 # 1. Qeexidda Enum-ka
+# 1. Enum-ka Doorka (Role Definition)
 class UserRole(enum.Enum):
-    superadmin = "superadmin"
-    admin = "admin"
-    user = "user"
-
+    SUPERADMIN = "superadmin"
+    ADMIN = "admin"
+    TEACHER = "teacher"
+    USER = "user"
 
 
 
@@ -86,8 +87,12 @@ class User(UserMixin):
         self.sessions = self.data.get("sessions", [])
         self.user_permissions = self.data.get("user_permissions", [])
 
-        self.patient_appointments = self.data.get("patient_appointments", [])
-        self.doctor_appointments = self.data.get("doctor_appointments", [])
+        # Muhiim: Haddii uu yahay macallin, halkan waxaa ku jiraya ID-ga uu ku leeyahay Teacher collection-ka
+        self.teacher_id = str(self.data.get("teacher_id")) if self.data.get("teacher_id") else None
+        
+        self.status = self.data.get("status", True)
+        self.created_at = self.data.get("created_at")
+
 
     # Flask-Login required
     def get_id(self):
@@ -111,20 +116,54 @@ class User(UserMixin):
 class Teacher:
     def __init__(self, data):
         self.data = data or {}
+
         self.id = str(self.data.get("_id"))
-        self.user_id = self.data.get("user_id") # Ku xiraya User collection-ka
-        self.specialization = self.data.get("specialization")
-        self.assigned_classes = self.data.get("assigned_classes", []) # List of class_ids
+
+        # Unique teacher code
+        self.teacher_role_id = self.data.get("teacher_role_id")  # e.g TCH-2026-001
+
+        # Basic info
+        self.full_name = self.data.get("full_name")
+
+        # Timestamps
+        self.created_at = self.data.get("created_at")
+        self.updated_at = self.data.get("updated_at")
+
+
+
+class TeacherAssignment:
+    def __init__(self, data):
+        self.data = data or {}
+
+        self.id = str(self.data.get("_id"))
+        self.teacher_id = str(self.data.get("teacher_id"))
+        self.class_id = str(self.data.get("class_id"))
+        self.section_id = str(self.data.get("section_id"))
+        self.subject_id = str(self.data.get("subject_id"))
+
+        self.created_at = self.data.get("created_at")
+        self.updated_at = self.data.get("updated_at")
+
+
+    
 
 class Student:
     def __init__(self, data):
         self.data = data or {}
         self.id = str(self.data.get("_id"))
+        
+        # Aqoonsiga gaarka ah ee Ardayga
+        self.role_no = self.data.get("role_no") # Tusaale: STD-2026-0001
         self.full_name = self.data.get("full_name")
-        self.student_id = self.data.get("student_id") # ID gaar ah ee ardayga
-        self.class_id = self.data.get("class_id")     # Ku xiran Class-ka
-        self.teacher_id = self.data.get("teacher_id") # Macalinka uu hoos tago
+        
+        # Xiriirka
+        self.class_id = str(self.data.get("class_id"))
+        self.section_id = str(self.data.get("section_id"))
+        self.status = self.data.get("status", True)
+        # Timestamps
         self.created_at = self.data.get("created_at")
+        self.updated_at = self.data.get("updated_at")
+
 
 
 class ClassRoom:
@@ -132,8 +171,13 @@ class ClassRoom:
         self.data = data or {}
         self.id = str(self.data.get("_id"))
         self.class_name = self.data.get("class_name") # Tusaale: 12-A
-        self.teacher_id = self.data.get("teacher_id") # Macalinka fasalkan leh
 
+class Section:
+    def __init__(self, data):
+        self.data = data or {}
+        self.id = str(self.data.get("_id"))
+        self.section_name = self.data.get("section_name") # Tusaale: "A" ama "Subax"
+        self.class_id = str(self.data.get("class_id"))    # Waxay ku xiran tahay fasalka
 
 
 class Subject:
@@ -141,7 +185,8 @@ class Subject:
         self.data = data or {}
         self.id = str(self.data.get("_id"))
         self.subject_name = self.data.get("subject_name") # Tusaale: Xisaab
-        self.teacher_id = self.data.get("teacher_id")    # Kii dhiga
+        self.created_at = self.data.get("created_at")
+        self.updated_at = self.data.get("updated_at")
 
 
 class Result:
@@ -153,6 +198,8 @@ class Result:
         self.teacher_id = self.data.get("teacher_id") # Si macalinka loo shaandheeyo
         self.score = self.data.get("score", 0)
         self.exam_date = self.data.get("exam_date")
+        self.created_at = self.data.get("created_at")
+        self.updated_at = self.data.get("updated_at")
 
         
 
