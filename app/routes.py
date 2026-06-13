@@ -78,18 +78,17 @@ def index():
         })
 
         # =========================
-        # VALIDATION: NO DEADLINE
+        # START TIME REQUIRED
         # =========================
-        if not assignment or not assignment.get("start_time") or not assignment.get("end_time"):
-            flash("⚠️ Not exam ready!", "warning")
+        if not assignment or not assignment.get("start_time"):
+            flash("⚠️ Exam-ka wali lama diyaarin (Start Time lama dejin)!", "warning")
             return redirect(url_for('main.index'))
 
         start = assignment["start_time"]
-        end = assignment["end_time"]
         now = datetime.utcnow()
 
         # =========================
-        # NOT STARTED
+        # NOT STARTED YET
         # =========================
         if now < start:
 
@@ -101,17 +100,10 @@ def index():
             s = diff.seconds % 60
 
             flash(
-                f"⏳ Wali lama gaarin waqtiga login-ka! "
-                f"Waxa harsan: {d}d : {h}h : {m}m : {s}s",
+                f"⏳ Exam-ku wali ma bilaaban. Waxa harsan: {d}d : {h}h : {m}m : {s}s",
                 "warning"
             )
-            return redirect(url_for('main.index'))
 
-        # =========================
-        # EXPIRED
-        # =========================
-        if now > end:
-            flash("⛔ Waqtiga login-ka wuu kaa dhacay!", "danger")
             return redirect(url_for('main.index'))
 
         # =========================
