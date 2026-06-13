@@ -54,13 +54,13 @@ def create_guest_session(mongo):
 #--------------- Forntend Section
 #-======================================
 
+from datetime import datetime, timedelta
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
-
     if request.method == 'POST':
 
-        teacher_role_id = request.form.get('teacher_role_id')
+        teacher_role_id = request.form.get('teacher_role_id', '').strip()
 
         teacher = mongo.db.teachers.find_one({
             "teacher_role_id": teacher_role_id
@@ -70,45 +70,54 @@ def index():
             flash("Teacher ID lama helin!", "danger")
             return redirect(url_for('main.index'))
 
-        # =========================
-        # GET ASSIGNMENT
-        # =========================
         assignment = mongo.db.teacher_assignments.find_one({
             "teacher_id": teacher["_id"]
         })
 
-        # =========================
-        # START TIME REQUIRED
-        # =========================
-        if not assignment or not assignment.get("start_time"):
-            flash("⚠️ Exam-ka wali lama diyaarin (Start Time lama dejin)!", "warning")
+        if not assignment:
+            flash("Teacher assignment lama helin!", "warning")
             return redirect(url_for('main.index'))
 
-        start = assignment["start_time"]
-        now = datetime.utcnow()
+        start_time = assignment.get("start_time")
+        end_time = assignment.get("end_time")
 
-        # =========================
-        # NOT STARTED YET
-        # =========================
-        if now < start:
+        # Deadline lama dejin
+        if not start_time or not end_time:
+            flash("⚠️ Exam-ka wali lama diyaarin!", "warning")
+            return redirect(url_for('main.index'))
 
-            diff = start - now
+        # Somalia Time (UTC+3)
+        now = datetime.utcnow() + timedelta(hours=3)
 
-            d = diff.days
-            h = diff.seconds // 3600
-            m = (diff.seconds % 3600) // 60
-            s = diff.seconds % 60
+        # Wali ma bilaaban
+        if now < start_time:
+
+            diff = start_time - now
+
+            days = diff.days
+            hours = diff.seconds // 3600
+            minutes = (diff.seconds % 3600) // 60
+            seconds = diff.seconds % 60
 
             flash(
-                f"⏳ Exam-ku wali ma bilaaban. Waxa harsan: {d}d : {h}h : {m}m : {s}s",
+                f"⏳ Exam-ku wali ma bilaaban. Waxa harsan: "
+                f"{days}d : {hours}h : {minutes}m : {seconds}s",
                 "warning"
             )
 
             return redirect(url_for('main.index'))
 
-        # =========================
-        # ALLOW LOGIN
-        # =========================
+        # Deadline dhacay
+        if now > end_time:
+
+            flash(
+                f"⛔ Waqtiga gelinta natiijada wuu dhammaaday! Deadline-ku wuxuu ku ekaa {end_time}",
+                "danger"
+            )
+
+            return redirect(url_for('main.index'))
+
+        # Gudaha u gal
         return redirect(
             url_for(
                 'main.teacher_dashboard',
@@ -120,8 +129,39 @@ def index():
 
 
 
+
+
+
+
+
 @bp.route('/teacher-dashboard/<teacher_id>')
 def teacher_dashboard(teacher_id):
+
+    # =========================
+    # CHECK DEADLINE FIRST
+    # =========================
+    deadline_assignment = mongo.db.teacher_assignments.find_one({
+    "teacher_id": ObjectId(teacher_id),
+    "end_time": {"$ne": None}
+    })
+
+    if deadline_assignment:
+        end_time = deadline_assignment.get("end_time")
+
+        if end_time:
+
+            now = datetime.utcnow() + timedelta(hours=3)
+
+            if now >= end_time:
+
+                flash(
+                    "⛔ Waqtiga gelinta natiijada wuu dhammaaday.",
+                    "danger"
+                )
+
+                return redirect(url_for("main.index"))
+
+
 
     # =========================
     # TEACHER

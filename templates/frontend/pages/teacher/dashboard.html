@@ -375,5 +375,25 @@ startCountdown();
 </script>
 
 
+<script>
+const endTime = new Date("{{ end_time }}");
+
+function checkExpiry() {
+
+    const now = new Date();
+
+    if (now >= endTime) {
+
+        alert("Deadline expired!");
+
+        window.location.href = "/";
+    }
+}
+
+setInterval(checkExpiry, 1000);
+</script>
+
+
+
 </body>
 </html>
