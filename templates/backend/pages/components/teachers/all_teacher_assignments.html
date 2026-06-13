@@ -220,12 +220,23 @@
         <form method="POST" action="{{ url_for('main.add_result_deadline') }}">
 
             <div class="modal-body">
+            <label>Start Time</label>
+            <input
+                type="datetime-local"
+                name="start_time"
+                value="{% if start_time %}{{ start_time.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"
+                class="form-control"
+                required
+            >
 
-                <label>Start Time</label>
-                <input type="datetime-local" name="start_time" required>
-
-                <label>End Time</label>
-                <input type="datetime-local" name="end_time" required>
+            <label>End Time</label>
+            <input
+                type="datetime-local"
+                name="end_time"
+                value="{% if end_time %}{{ end_time.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"
+                class="form-control"
+                required
+            >
 
             </div>
 

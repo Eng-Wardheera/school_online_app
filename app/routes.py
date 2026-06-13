@@ -1753,7 +1753,6 @@ def remove_teacher_deadline(teacher_id):
 
 
 
-
 @bp.route('/all-teacher-assignments')
 @login_required
 def all_teacher_assignments():
@@ -1781,9 +1780,20 @@ def all_teacher_assignments():
             "created_at": a.get("created_at")
         })
 
+    # GET CURRENT DEADLINE
+    deadline = mongo.db.teacher_assignments.find_one({
+        "start_time": {"$exists": True},
+        "end_time": {"$exists": True}
+    })
+
+    start_time = deadline.get("start_time") if deadline else None
+    end_time = deadline.get("end_time") if deadline else None
+
     return render_template(
         "backend/pages/components/teachers/all_teacher_assignments.html",
-        assignments=data
+        assignments=data,
+        start_time=start_time,
+        end_time=end_time
     )
 
 
