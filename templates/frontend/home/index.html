@@ -7,7 +7,6 @@
 
 <title>Teacher Portal Login</title>
 
-<!-- Bootstrap 5.3.3 -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
@@ -49,6 +48,8 @@ body {
 
 /* FLASH MESSAGE ANIMATION */
 .alert-animated {
+    position: relative;
+    overflow: hidden; /* Si progress bar-ka uusan deyrka uga bixin */
     transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     opacity: 1;
     transform: translateY(0);
@@ -56,6 +57,28 @@ body {
 .alert-fade-out {
     opacity: 0;
     transform: translateY(-10px);
+}
+
+/* FLASH PROGRESS BAR */
+.flash-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.flash-progress-bar {
+    height: 100%;
+    width: 100%;
+    background-color: currentColor; /* Wuxuu qaadanayaa midabka qoraalka alert-ka (tsh. cagaar ama gaduud) */
+    animation: shrinkWidth 5s linear forwards;
+}
+
+@keyframes shrinkWidth {
+    from { width: 100%; }
+    to { width: 0%; }
 }
 
 /* ADVANCED PRELOADER OVERLAY */
@@ -102,10 +125,8 @@ body {
 
 <body>
 
-<!-- BACKGROUND OVERLAY -->
 <div class="overlay"></div>
 
-<!-- ADVANCED PRELOADER -->
 <div id="preloader">
     <div class="custom-spinner mb-3"></div>
     <h5 class="text-white fw-semibold">Galeysa, fadlan sug...</h5>
@@ -119,7 +140,6 @@ body {
 
             <div class="login-card shadow text-center">
 
-                <!-- SCHOOL LOGO -->
                 <img src="{{ url_for('static', filename='frontend/images/school-logo.jpeg') }}"
                      class="logo"
                      alt="School Logo">
@@ -127,21 +147,22 @@ body {
                 <h3 class="mb-1 fw-bold">Teacher Portal</h3>
                 <p class="text-muted mb-4">Login with your Teacher ID</p>
 
-                <!-- FLASH MESSAGES -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     <div id="flash-container">
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-animated shadow-sm alert-dismissible fade show" role="alert">
+                        <div class="alert alert-{{ category }} alert-animated shadow-sm alert-dismissible fade show mb-3" role="alert">
                             {{ message }}
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <div class="flash-progress">
+                                <div class="flash-progress-bar"></div>
+                            </div>
                         </div>
                     {% endfor %}
                     </div>
                 {% endif %}
                 {% endwith %}
 
-                <!-- FORM -->
                 <form method="POST" id="loginForm">
 
                     <div class="mb-3 text-start">
@@ -167,23 +188,21 @@ body {
 
 </div>
 
-<!-- Bootstrap JS Bundle (Aad u muhiim ah si uu u shaqeeyo badhanka Alert-ka) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- JAVASCRIPT FOR PRELOADER & FLASH FADE -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     
-    // 1. FLASH MESSAGE AUTO-HIDE (Lumin fariinta 5 ilbiriqsi kadib)
+    // 1. FLASH MESSAGE AUTO-HIDE WITH PROGRESS TIME
     const flashContainer = document.getElementById('flash-container');
     if (flashContainer) {
         setTimeout(function() {
             const alerts = flashContainer.querySelectorAll('.alert');
             alerts.forEach(function(alert) {
-                // Ku dar class-ka animation-ka luminta ah
+                // Ku dar class-ka animation-ka luminta ah (Fade out)
                 alert.classList.add('alert-fade-out');
                 
-                // Kadibna gebi ahaanba ka saar shaxda marka uu animation-ku dhammaado (600ms)
+                // Kadibna gebi ahaanba shaxda ka saar marka uu animation-ku dhammaado (600ms)
                 setTimeout(function() {
                     let bsAlert = bootstrap.Alert.getInstance(alert);
                     if (bsAlert) {
@@ -193,7 +212,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 }, 600);
             });
-        }, 5000); // 5000ms = 5 Seconds
+        }, 5000); // Progress bar-ku wuxuu ku dhammaanayaa 5000ms (5 Seconds)
     }
 
     // 2. PRELOADER EFFECT (Marka la gujiyo Login-ka)
@@ -202,7 +221,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     if (loginForm) {
         loginForm.addEventListener('submit', function() {
-            // Soo bandhig preloader-ka
+            // Soo bandhig preloader-ka weyn
             preloader.classList.add('active');
         });
     }
