@@ -122,6 +122,18 @@
                         </ul>
                     </li>
 
+                    <!-- Results -->
+                    <li class="nxl-item nxl-hasmenu">
+                        <a href="#" class="nxl-link">
+                            <span class="nxl-micon"><i class="feather-users"></i></span>
+                            <span class="nxl-mtext">Student Results</span>
+                        </a>
+                        <ul class="nxl-submenu">
+                            <li><a class="nxl-link" href="{{ url_for('main.admin_results_overview') }}">All Students Results</a></li>
+                            <li><a class="nxl-link" href="{{ url_for('main.add_student') }}">Add Student Result</a></li>
+                        </ul>
+                    </li>
+
                 {% endif %}
 
                 <!-- ================= NORMAL USER ================= -->

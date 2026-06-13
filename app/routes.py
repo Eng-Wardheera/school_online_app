@@ -2135,10 +2135,458 @@ def import_students():
     return redirect(url_for('main.all_students'))
 
 
+@bp.route('/admin/results-overview')
+@login_required
+def admin_results_overview():
+
+    if current_user.role not in ["admin", "superadmin"]:
+        return abort(403)
+
+    assignments = list(mongo.db.teacher_assignments.find())
+
+    teacher_map = {}
+
+    total_classes = 0
+    total_students = 0
+    total_results = 0
+
+    # =========================
+    # TRACK UNIQUE TEACHERS
+    # =========================
+    unique_teachers = set()
+
+    for assignment in assignments:
+
+        teacher_id = assignment.get("teacher_id")
+        class_id = assignment.get("class_id")
+        section_id = assignment.get("section_id")
+        subject_id = assignment.get("subject_id")
+
+        if not teacher_id or not class_id or not subject_id:
+            continue
+
+        teacher = mongo.db.teachers.find_one({"_id": teacher_id})
+        classroom = mongo.db.classrooms.find_one({"_id": class_id})
+        subject = mongo.db.subjects.find_one({"_id": subject_id})
+
+        section = None
+        if section_id:
+            section = mongo.db.sections.find_one({"_id": section_id})
+
+        if not teacher:
+            continue
+
+        # =========================
+        # ADD TO UNIQUE TEACHERS
+        # =========================
+        unique_teachers.add(str(teacher["_id"]))
+
+        teacher_key = str(teacher["_id"])
+
+        if teacher_key not in teacher_map:
+            teacher_map[teacher_key] = {
+                "teacher_id": teacher_key,
+                "teacher_name": teacher.get("full_name"),
+                "teacher_role_id": teacher.get("teacher_role_id"),
+                "total_classes": 0,
+                "total_students": 0,
+                "total_results": 0,
+                "classes": []
+            }
+
+        # =========================
+        # STUDENTS COUNT
+        # =========================
+        student_query = {"class_id": class_id}
+        if section_id:
+            student_query["section_id"] = section_id
+
+        class_students = mongo.db.students.count_documents(student_query)
+
+        # =========================
+        # RESULTS COUNT
+        # =========================
+        submitted_results = len(mongo.db.results.distinct(
+            "student_id",
+            {
+                "teacher_id": teacher_id,
+                "subject_id": subject_id
+            }
+        ))
+
+        pending_results = max(class_students - submitted_results, 0)
+
+        progress = round(
+            (submitted_results / class_students) * 100,
+            1
+        ) if class_students > 0 else 0
+
+        teacher_map[teacher_key]["classes"].append({
+            "class_id": str(class_id),
+            "section_id": str(section_id) if section_id else None,
+            "subject_id": str(subject_id),
+
+            "class_name": classroom.get("class_name") if classroom else "N/A",
+            "section_name": section.get("section_name") if section else "No Section",
+            "subject_name": subject.get("subject_name") if subject else "N/A",
+
+            "total_students": class_students,
+            "submitted_results": submitted_results,
+            "remaining_results": pending_results,
+            "progress": progress
+        })
+
+        teacher_map[teacher_key]["total_classes"] += 1
+        teacher_map[teacher_key]["total_students"] += class_students
+        teacher_map[teacher_key]["total_results"] += submitted_results
+
+        total_classes += 1
+        total_students += class_students
+        total_results += submitted_results
+
+    # =========================
+    # FINAL TEACHER LIST
+    # =========================
+    teachers = list(teacher_map.values())
+
+    return render_template(
+        "backend/pages/components/results/admin_results_overview.html",
+
+        teachers=teachers,
+
+        # 🔥 FIXED TEACHER COUNT
+        total_teachers=len(unique_teachers),
+
+        total_classes=total_classes,
+        total_students=total_students,
+        total_results=total_results
+    )
 
 
 
 
+@bp.route(
+'/admin-class-results/<teacher_id>/<class_id>/<subject_id>',
+defaults={'section_id': None}
+)
+@bp.route(
+'/admin-class-results/<teacher_id>/<class_id>/<subject_id>/<section_id>'
+)
+@login_required
+def admin_class_results(teacher_id, class_id, subject_id, section_id):
+
+
+    # =========================
+    # ROLE CHECK
+    # =========================
+    if current_user.role not in ['admin', 'superadmin']:
+        return abort(403)
+
+    # =========================
+    # VALIDATE IDs (VERY IMPORTANT FIX)
+    # =========================
+    if not teacher_id or teacher_id == "None":
+        return abort(404)
+
+    try:
+        teacher_obj = ObjectId(teacher_id)
+        class_obj = ObjectId(class_id)
+        subject_obj = ObjectId(subject_id)
+
+        section_obj = ObjectId(section_id) if section_id else None
+
+    except:
+        return abort(404)
+
+    # =========================
+    # FETCH DATA
+    # =========================
+    teacher = mongo.db.teachers.find_one({"_id": teacher_obj})
+    classroom = mongo.db.classrooms.find_one({"_id": class_obj})
+    subject = mongo.db.subjects.find_one({"_id": subject_obj})
+
+    section = None
+    if section_obj:
+        section = mongo.db.sections.find_one({"_id": section_obj})
+
+    if not teacher or not classroom or not subject:
+        return abort(404)
+
+    # =========================
+    # STUDENTS QUERY
+    # =========================
+    query = {
+        "class_id": class_obj
+    }
+
+    if section_obj:
+        query["section_id"] = section_obj
+
+    students = list(mongo.db.students.find(query))
+
+    # =========================
+    # RESULTS
+    # =========================
+    results_data = []
+    total_students = len(students)
+    submitted_results = 0
+    total_score = 0
+
+    for student in students:
+
+        result = mongo.db.results.find_one({
+            "student_id": student["_id"],
+            "teacher_id": teacher_obj,
+            "subject_id": subject_obj
+        })
+
+        if result:
+            score = result.get("score", 0)
+            submitted_results += 1
+
+            try:
+                total_score += float(score)
+            except:
+                pass
+
+            status = "Submitted"
+        else:
+            score = None
+            status = "Pending"
+
+        results_data.append({
+            "student_id": str(student["_id"]),
+            "role_no": student.get("role_no"),
+            "full_name": student.get("full_name"),
+            "score": score,
+            "status": status
+        })
+
+    # =========================
+    # STATS
+    # =========================
+    pending_results = total_students - submitted_results
+
+    completion_percentage = round(
+        (submitted_results / total_students) * 100,
+        1
+    ) if total_students > 0 else 0
+
+    average_score = round(
+        total_score / submitted_results,
+        2
+    ) if submitted_results > 0 else 0
+
+    # =========================
+    # RETURN
+    # =========================
+    return render_template(
+        "backend/pages/components/results/admin_class_results.html",
+        teacher=teacher,
+        classroom=classroom,
+        subject=subject,
+        section=section,
+        results=results_data,
+        total_students=total_students,
+        submitted_results=submitted_results,
+        pending_results=pending_results,
+        completion_percentage=completion_percentage,
+        average_score=average_score
+    )
+
+
+
+
+@bp.route('/edit-result/<student_id>/<subject_id>', methods=['GET', 'POST'])
+@login_required
+def edit_result(student_id, subject_id):
+
+    # =========================
+    # VALIDATE IDS
+    # =========================
+    try:
+        student_obj = ObjectId(student_id)
+        subject_obj = ObjectId(subject_id)
+    except:
+        return abort(404)
+
+    # =========================
+    # GET STUDENT
+    # =========================
+    student = mongo.db.students.find_one({"_id": student_obj})
+    subject = mongo.db.subjects.find_one({"_id": subject_obj})
+
+    if not student or not subject:
+        return abort(404)
+
+    # =========================
+    # FIND EXISTING RESULT
+    # =========================
+    result = mongo.db.results.find_one({
+        "student_id": student_obj,
+        "subject_id": subject_obj
+    })
+
+    # =========================
+    # POST (UPDATE / CREATE)
+    # =========================
+    if request.method == 'POST':
+
+        score = request.form.get("score")
+
+        if score is None or score == "":
+            flash("Score is required!", "danger")
+            return redirect(request.url)
+
+        try:
+            score_value = float(score)
+        except:
+            flash("Invalid score value!", "danger")
+            return redirect(request.url)
+
+        if result:
+
+            # UPDATE EXISTING
+            mongo.db.results.update_one(
+                {"_id": result["_id"]},
+                {
+                    "$set": {
+                        "score": score_value,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+
+            flash("Result updated successfully!", "success")
+
+        else:
+
+            # CREATE NEW RESULT
+            mongo.db.results.insert_one({
+                "student_id": student_obj,
+                "subject_id": subject_obj,
+                "teacher_id": None,  # optional haddii aad rabto later fill
+                "score": score_value,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            })
+
+            flash("Result created successfully!", "success")
+
+        return redirect(url_for('main.admin_results_overview'))
+
+    # =========================
+    # GET VIEW
+    # =========================
+    return render_template(
+        "backend/pages/components/results/edit_result.html",
+        student=student,
+        subject=subject,
+        result=result
+    )
+
+
+
+@bp.route('/delete-result/<student_id>/<subject_id>', methods=['POST'])
+@login_required
+def delete_result(student_id, subject_id):
+    mongo.db.results.delete_one({
+        "student_id": ObjectId(student_id),
+        "subject_id": ObjectId(subject_id)
+    })
+
+    flash("Result deleted successfully", "success")
+    return redirect(request.referrer)
+
+
+
+
+
+@bp.route(
+    '/export-class-results/<teacher_id>/<class_id>/<subject_id>/<section_id>',
+    defaults={'section_id': None}
+)
+@bp.route('/export-class-results/<teacher_id>/<class_id>/<subject_id>')
+@login_required
+def export_class_results(teacher_id, class_id, subject_id, section_id):
+
+    try:
+        teacher_obj = ObjectId(teacher_id)
+        class_obj = ObjectId(class_id)
+        subject_obj = ObjectId(subject_id)
+
+        section_obj = ObjectId(section_id) if section_id else None
+
+    except:
+        return abort(404)
+
+    # =========================
+    # FETCH META INFO (CLASS + SECTION)
+    # =========================
+    classroom = mongo.db.classrooms.find_one({"_id": class_obj})
+    subject = mongo.db.subjects.find_one({"_id": subject_obj})
+    section = None
+
+    if section_obj:
+        section = mongo.db.sections.find_one({"_id": section_obj})
+
+    class_name = classroom.get("class_name") if classroom else "N/A"
+    subject_name = subject.get("subject_name") if subject else "N/A"
+    section_name = section.get("section_name") if section else "No Section"
+
+    # =========================
+    # STUDENT QUERY
+    # =========================
+    query = {"class_id": class_obj}
+
+    if section_obj:
+        query["section_id"] = section_obj
+
+    students = list(mongo.db.students.find(query))
+
+    # =========================
+    # CSV GENERATOR
+    # =========================
+    def generate():
+
+        # HEADER (WITH META INFO)
+        yield f"Class,{class_name}\n"
+        yield f"Section,{section_name}\n"
+        yield f"Subject,{subject_name}\n"
+        yield "\n"
+
+        yield "Role No,Full Name,Score,Status\n"
+
+        for student in students:
+
+            result = mongo.db.results.find_one({
+                "student_id": student["_id"],
+                "teacher_id": teacher_obj,
+                "subject_id": subject_obj
+            })
+
+            if result:
+                score = result.get("score", "")
+                status = "Submitted"
+            else:
+                score = ""
+                status = "Pending"
+
+            row = f"{student.get('role_no')},{student.get('full_name')},{score},{status}\n"
+            yield row
+
+    filename = f"{class_name}_{subject_name}_results_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+
+    return Response(
+        generate(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
+
+
+    
 #---------------------------------------------------
 #---- Route: 70 | Dashboard - Backend Template -----
 #---------------------------------------------------
