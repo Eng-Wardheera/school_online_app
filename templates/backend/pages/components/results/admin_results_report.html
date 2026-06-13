@@ -1,0 +1,437 @@
+{% extends 'backend/home/base.html' %}
+
+{% block title %}Results Report{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+
+
+<div class="page-header-left d-flex align-items-center">
+
+    <div class="page-header-title">
+        <h5 class="m-b-10">
+            Results Report Analytics
+        </h5>
+    </div>
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('main.dashboard') }}">
+                Dashboard
+            </a>
+        </li>
+
+        <li class="breadcrumb-item">
+            Results Report
+        </li>
+    </ul>
+
+</div>
+
+
+</div>
+
+<div class="main-content">
+
+
+<!-- FILTER CARD -->
+<div class="card border-0 shadow-sm mb-4">
+
+    <div class="card-header">
+        <h5 class="mb-0">
+            Filter Results
+        </h5>
+    </div>
+
+    <div class="card-body">
+
+        <form method="GET">
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Select Class
+                    </label>
+
+                    <select
+                        name="class_id"
+                        class="form-select"
+                        onchange="this.form.submit()">
+
+                        <option value="">
+                            -- Choose Class --
+                        </option>
+
+                        {% for cls in classes %}
+
+                        <option
+                            value="{{ cls._id }}"
+                            {% if selected_class and selected_class._id == cls._id %}
+                            selected
+                            {% endif %}
+                        >
+                            {{ cls.class_name }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                {% if sections %}
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Select Section
+                    </label>
+
+                    <select
+                        name="section_id"
+                        class="form-select">
+
+                        <option value="">
+                            All Sections
+                        </option>
+
+                        {% for sec in sections %}
+
+                        <option
+                            value="{{ sec._id }}"
+                            {% if selected_section and selected_section._id == sec._id %}
+                            selected
+                            {% endif %}
+                        >
+                            {{ sec.section_name }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                {% endif %}
+
+                <div class="col-md-4 d-flex align-items-end">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary me-2">
+
+                        <i class="feather-filter"></i>
+                        Filter
+
+                    </button>
+
+                    {% if report %}
+
+                    <a
+                        href="{{ url_for(
+                            'main.export_results_report',
+                            class_id=request.args.get('class_id'),
+                            section_id=request.args.get('section_id')
+                        ) }}"
+                        class="btn btn-success">
+
+                        <i class="feather-download"></i>
+                        Excel
+
+                    </a>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% if selected_class %}
+
+<!-- SUMMARY -->
+<div class="row mb-4">
+
+    <div class="col-xl-3 col-md-6">
+
+        <div class="card border-0 shadow-sm">
+
+            <div class="card-body text-center">
+
+                <h3 class="fw-bold text-primary">
+                    {{ report|length }}
+                </h3>
+
+                <small class="text-muted">
+                    Students
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+
+        <div class="card border-0 shadow-sm">
+
+            <div class="card-body text-center">
+
+                <h3 class="fw-bold text-success">
+                    {{ subjects|length }}
+                </h3>
+
+                <small class="text-muted">
+                    Subjects
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+
+        <div class="card border-0 shadow-sm">
+
+            <div class="card-body text-center">
+
+                <h3 class="fw-bold text-info">
+                    {{ selected_class.class_name }}
+                </h3>
+
+                <small class="text-muted">
+                    Selected Class
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+
+        <div class="card border-0 shadow-sm">
+
+            <div class="card-body text-center">
+
+                <h3 class="fw-bold text-warning">
+
+                    {% if selected_section %}
+                        {{ selected_section.section_name }}
+                    {% else %}
+                        All
+                    {% endif %}
+
+                </h3>
+
+                <small class="text-muted">
+                    Section
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+<!-- SEARCH -->
+{% if report %}
+
+<div class="card border-0 shadow-sm mb-3">
+
+    <div class="card-body">
+
+        <input
+            type="text"
+            id="searchInput"
+            class="form-control"
+            placeholder="Search by student name or role number...">
+
+    </div>
+
+</div>
+
+{% endif %}
+
+<!-- RESULTS TABLE -->
+<div class="card border-0 shadow-lg">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+            Students Results Report
+        </h5>
+
+    </div>
+
+    <div class="card-body p-0">
+
+        {% if report %}
+
+        <div class="table-responsive">
+
+            <table
+                class="table table-bordered table-hover align-middle mb-0"
+                id="resultsTable">
+
+                <thead class="table-primary">
+
+                    <tr>
+
+                        <th>#</th>
+
+                        <th>Role No</th>
+
+                        <th>Student Name</th>
+
+                        {% for subject in subjects %}
+
+                        <th class="text-center">
+                            {{ subject.subject_name }}
+                        </th>
+
+                        {% endfor %}
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for student in report %}
+
+                    <tr>
+
+                        <td>
+                            {{ loop.index }}
+                        </td>
+
+                        <td class="role-no">
+                            {{ student.role_no }}
+                        </td>
+
+                        <td class="student-name fw-semibold">
+                            {{ student.full_name }}
+                        </td>
+
+                        {% for score in student.scores %}
+
+                        <td class="text-center">
+
+                            {% if score != "" %}
+
+                            <span class="badge bg-success">
+                                {{ score }}
+                            </span>
+
+                            {% else %}
+
+                            <span class="badge bg-secondary">
+                                N/A
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        {% endfor %}
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="text-center py-5">
+
+            <i class="feather-database fs-1 text-muted"></i>
+
+            <h5 class="mt-3">
+                No Results Found
+            </h5>
+
+            <p class="text-muted">
+                Please select a class to view results.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+
+</div>
+
+<script>
+
+const searchInput =
+document.getElementById("searchInput");
+
+if(searchInput){
+
+searchInput.addEventListener(
+"keyup",
+function(){
+
+const value =
+this.value.toLowerCase();
+
+const rows =
+document.querySelectorAll(
+"#resultsTable tbody tr"
+);
+
+rows.forEach(row=>{
+
+const name =
+row.querySelector(".student-name")
+.innerText.toLowerCase();
+
+const role =
+row.querySelector(".role-no")
+.innerText.toLowerCase();
+
+if(
+name.includes(value)
+||
+role.includes(value)
+){
+row.style.display="";
+}
+else{
+row.style.display="none";
+}
+
+});
+
+});
+}
+
+</script>
+
+{% endblock %}

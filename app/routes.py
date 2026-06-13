@@ -2586,7 +2586,333 @@ def export_class_results(teacher_id, class_id, subject_id, section_id):
     )
 
 
-    
+
+@bp.route('/admin/results-report')
+@login_required
+def admin_results_report():
+
+    if current_user.role not in ['admin', 'superadmin']:
+        return abort(403)
+
+    classes = list(
+        mongo.db.classrooms.find().sort("class_name", 1)
+    )
+
+    class_id = request.args.get("class_id")
+    section_id = request.args.get("section_id")
+
+    report = []
+    subjects = []
+    sections = []
+
+    selected_class = None
+    selected_section = None
+
+    if class_id:
+
+        try:
+            class_obj = ObjectId(class_id)
+
+            selected_class = mongo.db.classrooms.find_one({
+                "_id": class_obj
+            })
+
+        except:
+            return abort(404)
+
+        sections = list(
+            mongo.db.sections.find({
+                "class_id": class_obj
+            })
+        )
+
+        query = {
+            "class_id": class_obj
+        }
+
+        if section_id:
+
+            try:
+
+                section_obj = ObjectId(section_id)
+
+                query["section_id"] = section_obj
+
+                selected_section = mongo.db.sections.find_one({
+                    "_id": section_obj
+                })
+
+            except:
+                pass
+
+        students = list(
+            mongo.db.students.find(query)
+        )
+
+        assignments_query = {
+            "class_id": class_obj
+        }
+
+        if section_id:
+            assignments_query["section_id"] = section_obj
+
+        assignments = list(
+            mongo.db.teacher_assignments.find(
+                assignments_query
+            )
+        )
+
+        subject_ids = []
+
+        for assignment in assignments:
+
+            sid = assignment.get("subject_id")
+
+            if sid and sid not in subject_ids:
+                subject_ids.append(sid)
+
+        subjects = list(
+            mongo.db.subjects.find({
+                "_id": {
+                    "$in": subject_ids
+                }
+            })
+        )
+
+        subjects.sort(
+            key=lambda x: x.get("subject_name", "")
+        )
+
+        for student in students:
+
+            row = {
+
+                "student_id": str(student["_id"]),
+
+                "role_no": student.get("role_no"),
+
+                "full_name": student.get("full_name"),
+
+                "scores": []
+
+            }
+
+            for subject in subjects:
+
+                result = mongo.db.results.find_one({
+
+                    "student_id": student["_id"],
+
+                    "subject_id": subject["_id"]
+
+                })
+
+                score = ""
+
+                if result:
+                    score = result.get("score", "")
+
+                row["scores"].append(score)
+
+            report.append(row)
+
+    return render_template(
+
+        "backend/pages/components/results/admin_results_report.html",
+
+        classes=classes,
+
+        sections=sections,
+
+        subjects=subjects,
+
+        report=report,
+
+        selected_class=selected_class,
+
+        selected_section=selected_section
+    )
+
+
+@bp.route('/export-results-report')
+@login_required
+def export_results_report():
+
+
+    if current_user.role not in ['admin', 'superadmin']:
+        return abort(403)
+
+    class_id = request.args.get("class_id")
+    section_id = request.args.get("section_id")
+
+    if not class_id:
+        return abort(404)
+
+    try:
+        class_obj = ObjectId(class_id)
+        section_obj = ObjectId(section_id) if section_id else None
+    except:
+        return abort(404)
+
+    classroom = mongo.db.classrooms.find_one({
+        "_id": class_obj
+    })
+
+    section = None
+
+    if section_obj:
+        section = mongo.db.sections.find_one({
+            "_id": section_obj
+        })
+
+    # =========================
+    # STUDENTS
+    # =========================
+
+    query = {
+        "class_id": class_obj
+    }
+
+    if section_obj:
+        query["section_id"] = section_obj
+
+    students = list(
+        mongo.db.students.find(query)
+    )
+
+    # =========================
+    # SUBJECTS
+    # =========================
+
+    assignment_query = {
+        "class_id": class_obj
+    }
+
+    if section_obj:
+        assignment_query["section_id"] = section_obj
+
+    assignments = list(
+        mongo.db.teacher_assignments.find(
+            assignment_query
+        )
+    )
+
+    subject_ids = []
+
+    for assignment in assignments:
+
+        subject_id = assignment.get("subject_id")
+
+        if subject_id and subject_id not in subject_ids:
+            subject_ids.append(subject_id)
+
+    subjects = list(
+        mongo.db.subjects.find({
+            "_id": {
+                "$in": subject_ids
+            }
+        })
+    )
+
+    subjects.sort(
+        key=lambda x: x.get("subject_name", "")
+    )
+
+    # =========================
+    # CSV GENERATOR
+    # =========================
+
+    def generate():
+
+        headers = [
+            "Role No",
+            "Student Name"
+        ]
+
+        for subject in subjects:
+            headers.append(
+                subject.get("subject_name")
+            )
+
+        yield ",".join(headers) + "\n"
+
+        for student in students:
+
+            row = [
+
+                str(student.get("role_no", "")),
+
+                '"' + str(
+                    student.get(
+                        "full_name",
+                        ""
+                    )
+                ) + '"'
+
+            ]
+
+            for subject in subjects:
+
+                result = mongo.db.results.find_one({
+
+                    "student_id":
+                    student["_id"],
+
+                    "subject_id":
+                    subject["_id"]
+
+                })
+
+                score = ""
+
+                if result:
+                    score = str(
+                        result.get(
+                            "score",
+                            ""
+                        )
+                    )
+
+                row.append(score)
+
+            yield ",".join(row) + "\n"
+
+    # =========================
+    # FILE NAME
+    # =========================
+
+    filename = classroom.get(
+        "class_name",
+        "Results"
+    )
+
+    if section:
+        filename += "_" + section.get(
+            "section_name"
+        )
+
+    filename += "_Report.csv"
+
+    return Response(
+
+        generate(),
+
+        mimetype="text/csv",
+
+        headers={
+
+            "Content-Disposition":
+            f"attachment; filename={filename}"
+
+        }
+
+    )
+
+
+
+
+
+
 #---------------------------------------------------
 #---- Route: 70 | Dashboard - Backend Template -----
 #---------------------------------------------------
