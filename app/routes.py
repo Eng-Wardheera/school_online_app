@@ -319,6 +319,34 @@ def class_students(assignment_id):
         return abort(404)
 
     # =========================
+    # CHECK DEADLINE FIRST
+    # =========================
+    teacher_id = assignment["teacher_id"]
+
+    deadline_assignment = mongo.db.teacher_assignments.find_one({
+    "teacher_id": teacher_id,
+    "end_time": {"$ne": None}
+    })
+
+    if deadline_assignment:
+
+        end_time = deadline_assignment.get("end_time")
+
+        if end_time:
+
+            now = datetime.utcnow() + timedelta(hours=3)
+
+            if now >= end_time:
+
+                flash(
+                    "⛔ Waqtiga gelinta natiijada wuu dhammaaday.",
+                    "danger"
+                )
+
+                return redirect(url_for("main.index"))
+
+
+    # =========================
     # STUDENTS
     # =========================
     query = {
@@ -364,6 +392,17 @@ def class_students(assignment_id):
         "subject_id": assignment["subject_id"]
     })
 
+
+    # GET GLOBAL DEADLINE (from first assignment that has it)
+    deadline_assignment = mongo.db.teacher_assignments.find_one({
+        "teacher_id": ObjectId(teacher_id),
+        "start_time": {"$ne": None},
+        "end_time": {"$ne": None}
+    })
+
+    start_time = deadline_assignment.get("start_time") if deadline_assignment else None
+    end_time = deadline_assignment.get("end_time") if deadline_assignment else None
+
     # convert to map for fast lookup
     result_map = {}
     for r in results:
@@ -379,7 +418,9 @@ def class_students(assignment_id):
         class_name=mongo.db.classrooms.find_one(
             {"_id": assignment["class_id"]}
         )["class_name"],
-        result_map=result_map
+        result_map=result_map,
+          start_time=start_time,
+        end_time=end_time
     )
 
 

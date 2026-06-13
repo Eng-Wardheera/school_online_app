@@ -375,7 +375,12 @@ startCountdown();
 </script>
 
 
+
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
+
 const endTime = new Date("{{ end_time }}");
 
 function checkExpiry() {
@@ -384,13 +389,27 @@ function checkExpiry() {
 
     if (now >= endTime) {
 
-        alert("Deadline expired!");
+        clearInterval(expiryInterval);
 
-        window.location.href = "/";
+        Swal.fire({
+            icon: "error",
+            title: "Deadline Expired",
+            text: "Waqtiga gelinta natiijada wuu dhammaaday.",
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        }).then(() => {
+
+            window.location.replace("/");
+
+        });
     }
 }
 
-setInterval(checkExpiry, 1000);
+const expiryInterval = setInterval(checkExpiry, 1000);
+
 </script>
 
 

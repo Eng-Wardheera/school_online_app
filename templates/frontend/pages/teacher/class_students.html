@@ -258,5 +258,43 @@ statusFilter.addEventListener("change", filterTable);
 
 
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+
+const endTime = new Date("{{ end_time }}");
+
+function checkExpiry() {
+
+    const now = new Date();
+
+    if (now >= endTime) {
+
+        clearInterval(expiryInterval);
+
+        Swal.fire({
+            icon: "error",
+            title: "Deadline Expired",
+            text: "Waqtiga gelinta natiijada wuu dhammaaday.",
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        }).then(() => {
+
+            window.location.replace("/");
+
+        });
+    }
+}
+
+const expiryInterval = setInterval(checkExpiry, 1000);
+
+</script>
+
+
+
+
 </body>
 </html>
