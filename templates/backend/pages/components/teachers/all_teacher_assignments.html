@@ -30,6 +30,12 @@
    <div class="page-header-right ms-auto d-flex flex-wrap gap-2 align-items-center">
 
     <!-- ASSIGN DEADLINE -->
+     <a href="{{ url_for('main.export_teacher_assignments') }}" class="btn btn-info">
+        <i class="feather-user-plus me-1"></i>
+       Export Teacher Assignments 
+    </a>
+
+    <!-- ASSIGN DEADLINE -->
     <button class="btn btn-primary" onclick="openDeadlineModal()">
         <i class="feather-plus me-1"></i>
         Assign Deadline

@@ -11,8 +11,9 @@ import traceback
 import uuid
 
 from bson import ObjectId
-from flask import Blueprint, Response, abort, current_app, flash, make_response, redirect, render_template, request, session, url_for
+from flask import Blueprint, Response, abort, current_app, flash, make_response, redirect, render_template, request, send_file, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
+from openpyxl import Workbook
 import pytz
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
@@ -1817,6 +1818,132 @@ def all_teacher_assignments():
         end_time=end_time
     )
 
+
+
+@bp.route('/admin/export-teacher-assignments')
+@login_required
+def export_teacher_assignments():
+
+    assignments = list(mongo.db.teacher_assignments.find())
+
+    wb = Workbook()
+
+    # =========================
+    # SHEET 1: DETAILS
+    # =========================
+    ws = wb.active
+    ws.title = "Assignments"
+
+    ws.append([
+        "Teacher Role ID",
+        "Teacher Name",
+        "Class Name",
+        "Section Name",
+        "Subject Name",
+        "Start Time",
+        "End Time",
+        "Created At"
+    ])
+
+    # =========================
+    # SUMMARY DATA MAP
+    # =========================
+    summary_map = {}
+
+    for a in assignments:
+
+        # teacher
+        teacher = mongo.db.teachers.find_one({
+            "_id": a.get("teacher_id")
+        })
+
+        teacher_name = teacher.get("full_name") if teacher else "N/A"
+        teacher_role = teacher.get("teacher_role_id") if teacher else "N/A"
+
+        # class
+        classroom = mongo.db.classrooms.find_one({"_id": a.get("class_id")})
+        class_name = classroom.get("class_name") if classroom else "N/A"
+
+        # section
+        section = None
+        section_name = "No Section"
+        if a.get("section_id"):
+            section = mongo.db.sections.find_one({"_id": a.get("section_id")})
+            section_name = section.get("section_name") if section else "No Section"
+
+        # subject
+        subject = mongo.db.subjects.find_one({"_id": a.get("subject_id")})
+        subject_name = subject.get("subject_name") if subject else "N/A"
+
+        # =========================
+        # WRITE MAIN ROW
+        # =========================
+        ws.append([
+            teacher_role,
+            teacher_name,
+            class_name,
+            section_name,
+            subject_name,
+            a.get("start_time"),
+            a.get("end_time"),
+            a.get("created_at")
+        ])
+
+        # =========================
+        # SUMMARY BUILD
+        # =========================
+        if teacher_role not in summary_map:
+            summary_map[teacher_role] = {
+                "teacher_name": teacher_name,
+                "classes": set(),
+                "sections": set(),
+                "subjects": set(),
+                "assignments": 0
+            }
+
+        summary_map[teacher_role]["classes"].add(class_name)
+        summary_map[teacher_role]["sections"].add(section_name)
+        summary_map[teacher_role]["subjects"].add(subject_name)
+        summary_map[teacher_role]["assignments"] += 1
+
+    # =========================
+    # SHEET 2: SUMMARY REPORT
+    # =========================
+    ws2 = wb.create_sheet("Summary Report")
+
+    ws2.append([
+        "Teacher Role ID",
+        "Teacher Name",
+        "Total Classes",
+        "Total Sections",
+        "Total Subjects",
+        "Total Assignments"
+    ])
+
+    for role_id, data in summary_map.items():
+
+        ws2.append([
+            role_id,
+            data["teacher_name"],
+            len(data["classes"]),
+            len(data["sections"]),
+            len(data["subjects"]),
+            data["assignments"]
+        ])
+
+    # =========================
+    # EXPORT FILE
+    # =========================
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        download_name="teacher_assignments_report.xlsx",
+        as_attachment=True,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 
 def generate_student_role_no():
