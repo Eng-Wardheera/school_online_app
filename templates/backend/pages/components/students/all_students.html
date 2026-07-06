@@ -40,6 +40,15 @@
 
             <!-- EXPORT / IMPORT -->
             <div class="d-flex gap-2">
+                <form method="POST"
+                    action="{{ url_for('main.delete_all_students') }}"
+                    onsubmit="return confirm('Are you sure you want to delete ALL students? This cannot be undone!')">
+
+                    <button type="submit" class="btn btn-danger">
+                        Delete All Students
+                    </button>
+
+                </form>
 
                 <a href="{{ url_for('main.export_students') }}"
                    class="btn btn-success btn-sm">
@@ -71,123 +80,149 @@
 
             <div class="table-responsive">
 
-                <table class="table table-hover">
+              <table class="table table-hover" id="leadList">
 
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Student ID</th>
-                            <th>Full Name</th>
-                            <th>Class</th>
-                            <th>Section</th>
-                            <th>Status</th>
-                            <th>Created At</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Student ID</th>
+            <th>Full Name</th>
+            <th>Class</th>
+            <th>Section</th>
+            <th>Shift</th>
+            <th>Status</th>
+            <th>Created At</th>
+            <th class="text-end">Actions</th>
+        </tr>
+    </thead>
 
-                    <tbody>
+    <tbody>
 
-                        {% if students %}
+        {% if students %}
 
-                            {% for s in students %}
+            {% for s in students %}
 
-                            <tr>
+            <tr>
 
-                                <td>{{ loop.index }}</td>
+                <td>{{ loop.index }}</td>
 
-                                <td>
-                                    <span class="badge bg-dark">
-                                        {{ s.role_no }}
-                                    </span>
-                                </td>
+                <!-- Student ID -->
+                <td>
+                    <span class="badge bg-dark">
+                        {{ s.role_no }}
+                    </span>
+                </td>
 
-                                <td class="fw-bold">
-                                    {{ s.full_name }}
-                                </td>
+                <!-- Full Name -->
+                <td class="fw-bold">
+                    {{ s.full_name }}
+                </td>
 
-                                <td>
-                                    <span class="badge bg-primary">
-                                        {{ s.class_name }}
-                                    </span>
-                                </td>
+                <!-- Class -->
+                <td>
+                    <span class="badge bg-primary">
+                        {{ s.class_name }}
+                    </span>
+                </td>
 
-                                <td>
-                                    <span class="badge bg-info">
-                                        {{ s.section_name }}
-                                    </span>
-                                </td>
+                <!-- Section -->
+                <td>
+                    <span class="badge bg-info">
+                        {{ s.section_name or 'N/A' }}
+                    </span>
+                </td>
 
-                                <td>
-                                    {% if s.status %}
-                                        <span class="badge bg-success">Active</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">Inactive</span>
-                                    {% endif %}
-                                </td>
-
-                                <td>
-                                    {{ s.created_at.strftime('%Y-%m-%d') if s.created_at else 'N/A' }}
-                                </td>
-
-                                <td class="text-end">
-
-                                    <div class="hstack gap-1 justify-content-end">
-
-                                        <!-- VIEW -->
-                                        <a href="#"
-                                           class="avatar-text avatar-md bg-soft-info text-info rounded-circle"
-                                           title="View">
-                                            <i class="feather-eye"></i>
-                                        </a>
-
-                                        <!-- EDIT -->
-                                        <a href="{{ url_for('main.edit_student', student_id=s.id) }}"
-                                           class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle"
-                                           title="Edit">
-                                            <i class="feather-edit"></i>
-                                        </a>
-
-                                        <!-- DELETE -->
-                                        <form action="{{ url_for('main.delete_student', student_id=s.id) }}"
-                                              method="POST"
-                                              class="d-inline">
-
-                                            <button type="submit"
-                                                    class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
-                                                    onclick="return confirm('Ma hubtaa inaad tirtirayso ardaygan?');">
-
-                                                <i class="feather-trash-2"></i>
-
-                                            </button>
-
-                                        </form>
-
-                                    </div>
-
-                                </td>
-
-                            </tr>
-
-                            {% endfor %}
-
+                <!-- SHIFT -->
+                <td>
+                    {% if s.shift_name %}
+                        {% if s.shift_name == 'Morning' %}
+                            <span class="badge bg-success">Morning</span>
+                        {% elif s.shift_name == 'Afternoon' %}
+                            <span class="badge bg-warning text-dark">Afternoon</span>
+                        {% elif s.shift_name == 'Evening' %}
+                            <span class="badge bg-info text-dark">Evening</span>
                         {% else %}
-
-                        <tr>
-                            <td colspan="8" class="text-center p-5">
-                                <i class="feather-users fs-40 text-muted d-block mb-3"></i>
-                                <span class="text-muted">
-                                    Ma jiraan arday la diiwaangeliyey.
-                                </span>
-                            </td>
-                        </tr>
-
+                            <span class="badge bg-secondary">
+                                {{ s.shift_name }}
+                            </span>
                         {% endif %}
+                    {% else %}
+                        <span class="text-muted">N/A</span>
+                    {% endif %}
+                </td>
 
-                    </tbody>
+                <!-- Status -->
+                <td>
+                    {% if s.status %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-danger">Inactive</span>
+                    {% endif %}
+                </td>
 
-                </table>
+                <!-- Created At -->
+                <td>
+                    {{ s.created_at.strftime('%Y-%m-%d') if s.created_at else 'N/A' }}
+                </td>
 
+                <!-- Actions -->
+                <td class="text-end">
+
+                    <div class="hstack gap-1 justify-content-end">
+
+                        <!-- VIEW -->
+                        <a href="#"
+                           class="avatar-text avatar-md bg-soft-info text-info rounded-circle"
+                           title="View">
+                            <i class="feather-eye"></i>
+                        </a>
+
+                        <!-- EDIT -->
+                        <a href="{{ url_for('main.edit_student', student_id=s.id) }}"
+                           class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle"
+                           title="Edit">
+                            <i class="feather-edit"></i>
+                        </a>
+
+                        <!-- DELETE -->
+                        <form action="{{ url_for('main.delete_student', student_id=s.id) }}"
+                              method="POST"
+                              class="d-inline">
+
+                            <button type="submit"
+                                    class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
+                                    onclick="return confirm('Ma hubtaa inaad tirtirayso ardaygan?');">
+
+                                <i class="feather-trash-2"></i>
+
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        {% else %}
+
+        <tr>
+            <td colspan="9" class="text-center p-5">
+                <i class="feather-users fs-40 text-muted d-block mb-3"></i>
+                <span class="text-muted">
+                    Ma jiraan arday la diiwaangeliyey.
+                </span>
+            </td>
+        </tr>
+
+        {% endif %}
+
+    </tbody>
+
+</table>
             </div>
 
         </div>

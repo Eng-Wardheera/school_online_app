@@ -150,31 +150,40 @@ class TeacherAssignment:
 
 
         
-
 class Student:
     def __init__(self, data):
         self.data = data or {}
         self.id = str(self.data.get("_id"))
-        
-        # Aqoonsiga gaarka ah ee Ardayga
-        self.role_no = self.data.get("role_no") # Tusaale: STD-2026-0001
+
+        # Student info
+        self.role_no = self.data.get("role_no")
         self.full_name = self.data.get("full_name")
-        
-        # Xiriirka
+
+        # Relationships
         self.class_id = str(self.data.get("class_id"))
         self.section_id = str(self.data.get("section_id"))
+
+        # 🔥 AUTO SHIFT FROM CLASSROOM
+        self.shift_name = self.data.get("shift_name")
+
         self.status = self.data.get("status", True)
-        # Timestamps
+
         self.created_at = self.data.get("created_at")
         self.updated_at = self.data.get("updated_at")
-
-
+        
 
 class ClassRoom:
     def __init__(self, data):
         self.data = data or {}
         self.id = str(self.data.get("_id"))
         self.class_name = self.data.get("class_name") # Tusaale: 12-A
+        # Shift name: Morning, Afternoon, Evening
+        self.shift_name = self.data.get("shift_name")
+
+        # Optional description
+        self.description = self.data.get("description")
+        self.created_at = self.data.get("created_at")
+        self.updated_at = self.data.get("updated_at")
 
 class Section:
     def __init__(self, data):
@@ -182,7 +191,8 @@ class Section:
         self.id = str(self.data.get("_id"))
         self.section_name = self.data.get("section_name") # Tusaale: "A" ama "Subax"
         self.class_id = str(self.data.get("class_id"))    # Waxay ku xiran tahay fasalka
-
+        self.created_at = self.data.get("created_at")
+        self.updated_at = self.data.get("updated_at")
 
 class Subject:
     def __init__(self, data):

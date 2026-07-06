@@ -24,19 +24,6 @@
 <!-- HEADER INFO -->
 <div class="card border-0 shadow mb-4">
 
-    <a href="{{ url_for(
-    'main.export_class_results',
-    teacher_id=teacher._id,
-    class_id=classroom._id,
-    subject_id=subject._id,
-    section_id=section._id if section else None
-) }}"
-   class="btn btn-success">
-
-    ⬇ Export CSV
-
-</a>
-
     <div class="card-body">
 
         <div class="row">
@@ -67,6 +54,47 @@
 
 <!-- STATS -->
 <div class="row mb-4">
+
+    <div class="card-header d-flex justify-content-between align-items-center">
+
+    <h5 class="mb-0">
+        Students Results
+    </h5>
+
+    {% if section %}
+
+    <a href="{{ url_for(
+        'main.export_class_results',
+        teacher_id=teacher._id,
+        class_id=classroom._id,
+        subject_id=subject._id,
+        section_id=section._id
+    ) }}"
+       class="btn btn-success">
+
+        <i class="feather-download me-1"></i>
+        Export CSV
+
+    </a>
+
+    {% else %}
+
+    <a href="{{ url_for(
+        'main.export_class_results',
+        teacher_id=teacher._id,
+        class_id=classroom._id,
+        subject_id=subject._id
+    ) }}"
+       class="btn btn-success">
+
+        <i class="feather-download me-1"></i>
+        Export CSV
+
+    </a>
+
+    {% endif %}
+
+</div>
 
     <div class="col-md-3">
         <div class="card text-center p-3">

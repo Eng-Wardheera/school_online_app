@@ -13,6 +13,7 @@ import uuid
 from bson import ObjectId
 from flask import Blueprint, Response, abort, current_app, flash, make_response, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
+import pytz
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from app import ALLOWED_EXTENSIONS
@@ -126,10 +127,6 @@ def index():
         )
 
     return render_template("frontend/home/index.html")
-
-
-
-
 
 
 
@@ -300,6 +297,7 @@ def teacher_dashboard(teacher_id):
          start_time=start_time,
         end_time=end_time
     )
+
 
 
 @bp.route('/class-students/<assignment_id>', methods=['GET'])
@@ -926,6 +924,7 @@ def all_users():
 
 
 
+
 @bp.route('/add-class', methods=['GET', 'POST'])
 @login_required
 def add_class():
@@ -936,26 +935,39 @@ def add_class():
     if request.method == 'POST':
 
         class_name = request.form.get('class_name', '').strip()
+        shift_name = request.form.get('shift_name', '').strip()
+        description = request.form.get('description', '').strip()
 
         if not class_name:
             flash("Fadlan geli magaca fasalka!", "danger")
             return redirect(url_for('main.add_class'))
 
+        if not shift_name:
+            flash("Fadlan dooro shift!", "danger")
+            return redirect(url_for('main.add_class'))
+
+        # Prevent duplicate (same class + same shift)
         existing_class = mongo.db.classrooms.find_one({
-            "class_name": class_name
+            "class_name": class_name,
+            "shift_name": shift_name
         })
 
         if existing_class:
-            flash("Fasalkan hore ayuu u jiraa!", "warning")
+            flash("Fasalkan iyo shift-kan hore ayey u jiraan!", "warning")
             return redirect(url_for('main.add_class'))
+
+        africa_time = datetime.now(pytz.timezone("Africa/Nairobi"))
 
         mongo.db.classrooms.insert_one({
             "class_name": class_name,
-            "created_at": datetime.utcnow()
+            "shift_name": shift_name,
+            "description": description,
+            "created_at": africa_time,
+            "updated_at": africa_time
         })
 
         flash(
-            f"Fasalka {class_name} si guul leh ayaa loo diiwaangeliyey!",
+            f"Fasalka {class_name} ({shift_name}) si guul leh ayaa loo diiwaangeliyey!",
             "success"
         )
 
@@ -964,6 +976,7 @@ def add_class():
     return render_template(
         "backend/pages/components/classes/add_class.html"
     )
+
 
 
 @bp.route('/all-classes', methods=['GET'])
@@ -988,7 +1001,6 @@ def all_classes():
 
 
 
-
 @bp.route('/edit-class/<class_id>', methods=['GET', 'POST'])
 @login_required
 def edit_class(class_id):
@@ -1006,16 +1018,23 @@ def edit_class(class_id):
     if request.method == 'POST':
 
         class_name = request.form.get('class_name')
+        shift_name = request.form.get('shift_name')
+        description = request.form.get('description')
 
         if not class_name:
             flash("Class name waa mandatory!", "danger")
             return redirect(url_for('main.edit_class', class_id=class_id))
 
+        africa_time = datetime.now(pytz.timezone("Africa/Nairobi"))
+
         mongo.db.classrooms.update_one(
             {"_id": ObjectId(class_id)},
             {
                 "$set": {
-                    "class_name": class_name
+                    "class_name": class_name,
+                    "shift_name": shift_name,
+                    "description": description,
+                    "updated_at": africa_time
                 }
             }
         )
@@ -1027,6 +1046,7 @@ def edit_class(class_id):
         "backend/pages/components/classes/edit_class.html",
         classroom=ClassRoom(classroom)
     )
+
 
 
 @bp.route('/delete-class/<class_id>', methods=['POST'])
@@ -1184,6 +1204,7 @@ def edit_section(section_id):
         section=section,
         classes=classes
     )
+
 
 @bp.route('/delete-section/<section_id>', methods=['POST'])
 @login_required
@@ -1819,15 +1840,21 @@ def add_student():
 
     if request.method == 'POST':
 
-        full_name = request.form.get('full_name')
+        full_name = request.form.get('full_name', '').strip()
         class_id = request.form.get('class_id')
         section_id = request.form.get('section_id')  # optional
         status = request.form.get('status')
 
-        # Section ma aha required
         if not full_name or not class_id:
             flash("Fadlan geli magaca ardayga iyo fasalka!", "danger")
             return redirect(url_for('main.add_student'))
+
+        # 🔥 GET CLASS + SHIFT AUTO
+        selected_class = mongo.db.classrooms.find_one({
+            "_id": ObjectId(class_id)
+        })
+
+        shift_name = selected_class.get("shift_name") if selected_class else None
 
         role_no = generate_student_role_no()
 
@@ -1836,6 +1863,10 @@ def add_student():
             "full_name": full_name,
             "class_id": ObjectId(class_id),
             "section_id": ObjectId(section_id) if section_id else None,
+
+            # 🔥 AUTO SHIFT FROM CLASS
+            "shift_name": shift_name,
+
             "status": True if status == "on" else False,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
@@ -1856,8 +1887,6 @@ def add_student():
     )
 
 
-
-
 @bp.route('/all-students')
 @login_required
 def all_students():
@@ -1871,17 +1900,30 @@ def all_students():
 
     for s in students_cursor:
 
-        # Get class name
+        # Get class
         class_name = None
         if s.get("class_id"):
-            c = mongo.db.classrooms.find_one({"_id": ObjectId(s["class_id"])})
+            c = mongo.db.classrooms.find_one({
+                "_id": ObjectId(s["class_id"])
+            })
             class_name = c["class_name"] if c else "N/A"
 
-        # Get section name
+        # Get section
         section_name = None
         if s.get("section_id"):
-            sec = mongo.db.sections.find_one({"_id": ObjectId(s["section_id"])})
+            sec = mongo.db.sections.find_one({
+                "_id": ObjectId(s["section_id"])
+            })
             section_name = sec["section_name"] if sec else "N/A"
+
+        # 🔥 SHIFT (from student or fallback from class)
+        shift_name = s.get("shift_name")
+
+        if not shift_name and s.get("class_id"):
+            c = mongo.db.classrooms.find_one({
+                "_id": ObjectId(s["class_id"])
+            })
+            shift_name = c.get("shift_name") if c else None
 
         students.append({
             "id": str(s["_id"]),
@@ -1889,6 +1931,10 @@ def all_students():
             "full_name": s.get("full_name"),
             "class_name": class_name,
             "section_name": section_name,
+
+            # 🔥 NEW SHIFT FIELD
+            "shift_name": shift_name,
+
             "status": s.get("status", True),
             "created_at": s.get("created_at")
         })
@@ -1897,7 +1943,6 @@ def all_students():
         "backend/pages/components/students/all_students.html",
         students=students
     )
-
 
 @bp.route('/edit-student/<student_id>', methods=['GET', 'POST'])
 @login_required
@@ -1915,23 +1960,29 @@ def edit_student(student_id):
 
     if request.method == 'POST':
 
-        full_name = request.form.get('full_name')
+        full_name = request.form.get('full_name', '').strip()
         class_id = request.form.get('class_id')
         section_id = request.form.get('section_id')
         status = request.form.get('status')
 
-        if not full_name:
-            flash("Magaca ardayga waa mandatory!", "danger")
-            return redirect(
-                url_for(
-                    'main.edit_student',
-                    student_id=student_id
-                )
-            )
+        if not full_name or not class_id:
+            flash("Magaca ardayga iyo fasalka waa mandatory!", "danger")
+            return redirect(url_for('main.edit_student', student_id=student_id))
+
+        # 🔥 GET CLASS FOR SHIFT AUTO UPDATE
+        selected_class = mongo.db.classrooms.find_one({
+            "_id": ObjectId(class_id)
+        })
+
+        shift_name = selected_class.get("shift_name") if selected_class else None
 
         update_data = {
             "full_name": full_name,
             "class_id": ObjectId(class_id),
+
+            # 🔥 AUTO SHIFT UPDATE
+            "shift_name": shift_name,
+
             "status": True if status == "on" else False,
             "updated_at": datetime.utcnow()
         }
@@ -1947,11 +1998,7 @@ def edit_student(student_id):
             {"$set": update_data}
         )
 
-        flash(
-            "Arday si guul leh ayaa loo update gareeyay!",
-            "success"
-        )
-
+        flash("Arday si guul leh ayaa loo update gareeyay!", "success")
         return redirect(url_for('main.all_students'))
 
     classes = list(mongo.db.classrooms.find())
@@ -1963,8 +2010,6 @@ def edit_student(student_id):
         classes=classes,
         sections=sections
     )
-
-
 
 @bp.route('/delete-student/<student_id>', methods=['POST'])
 @login_required
@@ -1998,28 +2043,39 @@ def export_students():
     output = io.StringIO()
     writer = csv.writer(output)
 
-    # HEADER (use names instead of IDs)
+    # HEADER
     writer.writerow([
         "Role No",
         "Full Name",
         "Class Name",
         "Section Name",
+        "Shift",
         "Status",
         "Created At"
     ])
 
     for s in students:
 
-        # GET CLASS NAME
+        # CLASS NAME
         class_name = ""
-        if s.get("class_id"):
-            c = mongo.db.classrooms.find_one({"_id": ObjectId(s["class_id"])})
-            class_name = c["class_name"] if c else ""
+        shift_name = ""
 
-        # GET SECTION NAME
+        if s.get("class_id"):
+            c = mongo.db.classrooms.find_one({
+                "_id": ObjectId(s["class_id"])
+            })
+            if c:
+                class_name = c.get("class_name", "")
+                
+                # fallback shift from class if student has none
+                shift_name = s.get("shift_name") or c.get("shift_name", "")
+
+        # SECTION NAME
         section_name = ""
         if s.get("section_id"):
-            sec = mongo.db.sections.find_one({"_id": ObjectId(s["section_id"])})
+            sec = mongo.db.sections.find_one({
+                "_id": ObjectId(s["section_id"])
+            })
             section_name = sec["section_name"] if sec else ""
 
         writer.writerow([
@@ -2027,6 +2083,10 @@ def export_students():
             s.get("full_name"),
             class_name,
             section_name,
+
+            # 🔥 SHIFT ADDED
+            shift_name,
+
             s.get("status"),
             s.get("created_at")
         ])
@@ -2036,8 +2096,11 @@ def export_students():
     return Response(
         output,
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment;filename=students.csv"}
+        headers={
+            "Content-Disposition": "attachment;filename=students.csv"
+        }
     )
+
 
 
 @bp.route('/import-students', methods=['POST'])
@@ -2066,7 +2129,6 @@ def import_students():
 
         # FULL NAME REQUIRED
         full_name = row.get("Full Name", "").strip()
-
         if not full_name:
             continue
 
@@ -2082,7 +2144,6 @@ def import_students():
 
         # SECTION OPTIONAL
         section_name = row.get("Section Name", "").strip()
-
         section_doc = None
 
         if section_name:
@@ -2090,9 +2151,13 @@ def import_students():
                 "section_name": section_name
             })
 
-        # AUTO GENERATE ROLE NO
-        role_no = row.get("Role No", "").strip()
+        # 🔥 SHIFT (NEW)
+        shift_name = row.get("Shift", "").strip()
+        if not shift_name:
+            shift_name = class_doc.get("shift_name")  # fallback
 
+        # ROLE NO
+        role_no = row.get("Role No", "").strip()
         if not role_no:
             role_no = generate_student_role_no()
 
@@ -2109,17 +2174,12 @@ def import_students():
             "full_name": full_name,
 
             "class_id": class_doc["_id"],
+            "section_id": section_doc["_id"] if section_doc else None,
 
-            # OPTIONAL SECTION
-            "section_id": (
-                section_doc["_id"]
-                if section_doc
-                else None
-            ),
+            # 🔥 SHIFT ADDED
+            "shift_name": shift_name,
 
-            "status": str(
-                row.get("Status", "True")
-            ).lower() == "true",
+            "status": str(row.get("Status", "True")).lower() == "true",
 
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
@@ -2135,6 +2195,35 @@ def import_students():
     return redirect(url_for('main.all_students'))
 
 
+
+
+@bp.route('/admin/students/delete-all', methods=['POST'])
+@login_required
+def delete_all_students():
+
+    # =========================
+    # SECURITY CHECK
+    # =========================
+    if current_user.role not in ["admin", "superadmin"]:
+        return abort(403)
+
+    try:
+        # =========================
+        # DELETE ALL STUDENTS
+        # =========================
+        result = mongo.db.students.delete_many({})
+
+        deleted_count = result.deleted_count
+
+        flash(f"Successfully deleted {deleted_count} students.", "success")
+
+    except Exception as e:
+        flash(f"Error deleting students: {str(e)}", "danger")
+
+    return redirect(url_for('main.admin_students'))
+
+
+
 @bp.route('/admin/results-overview')
 @login_required
 def admin_results_overview():
@@ -2146,14 +2235,10 @@ def admin_results_overview():
 
     teacher_map = {}
 
-    total_classes = 0
+    unique_teachers = set()
+
     total_students = 0
     total_results = 0
-
-    # =========================
-    # TRACK UNIQUE TEACHERS
-    # =========================
-    unique_teachers = set()
 
     for assignment in assignments:
 
@@ -2165,25 +2250,28 @@ def admin_results_overview():
         if not teacher_id or not class_id or not subject_id:
             continue
 
-        teacher = mongo.db.teachers.find_one({"_id": teacher_id})
-        classroom = mongo.db.classrooms.find_one({"_id": class_id})
-        subject = mongo.db.subjects.find_one({"_id": subject_id})
+        # 🔥 SAFE ObjectId handling
+        teacher = mongo.db.teachers.find_one({"_id": ObjectId(teacher_id)}) if not isinstance(teacher_id, ObjectId) else mongo.db.teachers.find_one({"_id": teacher_id})
+
+        classroom = mongo.db.classrooms.find_one({"_id": ObjectId(class_id)}) if not isinstance(class_id, ObjectId) else mongo.db.classrooms.find_one({"_id": class_id})
+
+        subject = mongo.db.subjects.find_one({"_id": ObjectId(subject_id)}) if not isinstance(subject_id, ObjectId) else mongo.db.subjects.find_one({"_id": subject_id})
 
         section = None
         if section_id:
-            section = mongo.db.sections.find_one({"_id": section_id})
+            section = mongo.db.sections.find_one({"_id": ObjectId(section_id)}) if not isinstance(section_id, ObjectId) else mongo.db.sections.find_one({"_id": section_id})
 
         if not teacher:
             continue
 
-        # =========================
-        # ADD TO UNIQUE TEACHERS
-        # =========================
-        unique_teachers.add(str(teacher["_id"]))
-
         teacher_key = str(teacher["_id"])
+        unique_teachers.add(teacher_key)
 
+        # =====================
+        # INIT TEACHER
+        # =====================
         if teacher_key not in teacher_map:
+
             teacher_map[teacher_key] = {
                 "teacher_id": teacher_key,
                 "teacher_name": teacher.get("full_name"),
@@ -2191,43 +2279,64 @@ def admin_results_overview():
                 "total_classes": 0,
                 "total_students": 0,
                 "total_results": 0,
-                "classes": []
+                "classes": {}
             }
 
-        # =========================
+        # =====================
         # STUDENTS COUNT
-        # =========================
-        student_query = {"class_id": class_id}
+        # =====================
+        student_query = {
+            "class_id": class_id
+        }
+
         if section_id:
             student_query["section_id"] = section_id
 
         class_students = mongo.db.students.count_documents(student_query)
 
-        # =========================
+        # =====================
         # RESULTS COUNT
-        # =========================
-        submitted_results = len(mongo.db.results.distinct(
-            "student_id",
-            {
-                "teacher_id": teacher_id,
-                "subject_id": subject_id
-            }
-        ))
+        # =====================
+        submitted_results = len(
+            mongo.db.results.distinct(
+                "student_id",
+                {
+                    "teacher_id": teacher_id,
+                    "subject_id": subject_id
+                }
+            )
+        )
 
-        pending_results = max(class_students - submitted_results, 0)
-
+        # 🔥 SAFE DIVISION
         progress = round(
             (submitted_results / class_students) * 100,
             1
         ) if class_students > 0 else 0
 
-        teacher_map[teacher_key]["classes"].append({
-            "class_id": str(class_id),
-            "section_id": str(section_id) if section_id else None,
-            "subject_id": str(subject_id),
+        pending_results = max(class_students - submitted_results, 0)
 
-            "class_name": classroom.get("class_name") if classroom else "N/A",
-            "section_name": section.get("section_name") if section else "No Section",
+        # =====================
+        # GROUP CLASS + SECTION
+        # =====================
+        group_key = f"{class_id}_{section_id if section_id else 'nosection'}"
+
+        if group_key not in teacher_map[teacher_key]["classes"]:
+
+            teacher_map[teacher_key]["classes"][group_key] = {
+                "class_id": str(class_id),
+                "class_name": classroom.get("class_name") if classroom else "N/A",
+
+                "section_id": str(section_id) if section_id else None,
+                "section_name": section.get("section_name") if section else "No Section",
+
+                "subjects": []
+            }
+
+            teacher_map[teacher_key]["total_classes"] += 1
+
+        teacher_map[teacher_key]["classes"][group_key]["subjects"].append({
+
+            "subject_id": str(subject_id),
             "subject_name": subject.get("subject_name") if subject else "N/A",
 
             "total_students": class_students,
@@ -2236,42 +2345,43 @@ def admin_results_overview():
             "progress": progress
         })
 
-        teacher_map[teacher_key]["total_classes"] += 1
+        # =====================
+        # TOTALS
+        # =====================
         teacher_map[teacher_key]["total_students"] += class_students
         teacher_map[teacher_key]["total_results"] += submitted_results
 
-        total_classes += 1
         total_students += class_students
         total_results += submitted_results
 
-    # =========================
-    # FINAL TEACHER LIST
-    # =========================
-    teachers = list(teacher_map.values())
+    # =====================
+    # FINAL STRUCTURE
+    # =====================
+    teachers = []
+
+    for teacher in teacher_map.values():
+        teacher["classes"] = list(teacher["classes"].values())
+        teachers.append(teacher)
+
+    total_classes = sum(t["total_classes"] for t in teachers)
 
     return render_template(
         "backend/pages/components/results/admin_results_overview.html",
 
         teachers=teachers,
 
-        # 🔥 FIXED TEACHER COUNT
-        total_teachers=len(unique_teachers),
-
-        total_classes=total_classes,
-        total_students=total_students,
-        total_results=total_results
+        stats={
+            "total_teachers": len(unique_teachers),
+            "total_classes": total_classes,
+            "total_students": total_students,
+            "total_results": total_results
+        }
     )
 
 
 
-
-@bp.route(
-'/admin-class-results/<teacher_id>/<class_id>/<subject_id>',
-defaults={'section_id': None}
-)
-@bp.route(
-'/admin-class-results/<teacher_id>/<class_id>/<subject_id>/<section_id>'
-)
+@bp.route('/admin-class-results/<teacher_id>/<class_id>/<subject_id>',defaults={'section_id': None})
+@bp.route('/admin-class-results/<teacher_id>/<class_id>/<subject_id>/<section_id>')
 @login_required
 def admin_class_results(teacher_id, class_id, subject_id, section_id):
 
@@ -2502,89 +2612,153 @@ def delete_result(student_id, subject_id):
 
 
 
-@bp.route(
-    '/export-class-results/<teacher_id>/<class_id>/<subject_id>/<section_id>',
-    defaults={'section_id': None}
-)
-@bp.route('/export-class-results/<teacher_id>/<class_id>/<subject_id>')
+@bp.route('/export-class-results/<teacher_id>/<class_id>/<subject_id>',defaults={'section_id': None})
+@bp.route('/export-class-results/<teacher_id>/<class_id>/<subject_id>/<section_id>')
 @login_required
-def export_class_results(teacher_id, class_id, subject_id, section_id):
+def export_class_results(
+    teacher_id,
+    class_id,
+    subject_id,
+    section_id=None
+):
+
+    if current_user.role not in ["admin", "superadmin"]:
+        return abort(403)
 
     try:
         teacher_obj = ObjectId(teacher_id)
         class_obj = ObjectId(class_id)
         subject_obj = ObjectId(subject_id)
 
-        section_obj = ObjectId(section_id) if section_id else None
+        section_obj = (
+            ObjectId(section_id)
+            if section_id else None
+        )
 
     except:
         return abort(404)
 
     # =========================
-    # FETCH META INFO (CLASS + SECTION)
+    # META DATA
     # =========================
-    classroom = mongo.db.classrooms.find_one({"_id": class_obj})
-    subject = mongo.db.subjects.find_one({"_id": subject_obj})
+
+    classroom = mongo.db.classrooms.find_one({
+        "_id": class_obj
+    })
+
+    subject = mongo.db.subjects.find_one({
+        "_id": subject_obj
+    })
+
     section = None
 
     if section_obj:
-        section = mongo.db.sections.find_one({"_id": section_obj})
+        section = mongo.db.sections.find_one({
+            "_id": section_obj
+        })
 
-    class_name = classroom.get("class_name") if classroom else "N/A"
-    subject_name = subject.get("subject_name") if subject else "N/A"
-    section_name = section.get("section_name") if section else "No Section"
+    class_name = (
+        classroom.get("class_name")
+        if classroom else "Class"
+    )
+
+    subject_name = (
+        subject.get("subject_name")
+        if subject else "Subject"
+    )
+
+    section_name = (
+        section.get("section_name")
+        if section else "All Sections"
+    )
 
     # =========================
-    # STUDENT QUERY
+    # STUDENTS QUERY
     # =========================
-    query = {"class_id": class_obj}
 
+    student_query = {
+        "class_id": class_obj
+    }
+
+    # ONLY FILTER SECTION IF EXISTS
     if section_obj:
-        query["section_id"] = section_obj
+        student_query["section_id"] = section_obj
 
-    students = list(mongo.db.students.find(query))
+    students = list(
+        mongo.db.students.find(student_query)
+        .sort("full_name", 1)
+    )
 
     # =========================
     # CSV GENERATOR
     # =========================
+
     def generate():
 
-        # HEADER (WITH META INFO)
         yield f"Class,{class_name}\n"
         yield f"Section,{section_name}\n"
         yield f"Subject,{subject_name}\n"
+        yield f"Generated,{datetime.utcnow()}\n"
         yield "\n"
 
-        yield "Role No,Full Name,Score,Status\n"
+        yield "Role No,Student Name,Score,Status\n"
 
         for student in students:
 
             result = mongo.db.results.find_one({
+
                 "student_id": student["_id"],
                 "teacher_id": teacher_obj,
                 "subject_id": subject_obj
+
             })
 
             if result:
+
                 score = result.get("score", "")
                 status = "Submitted"
+
             else:
+
                 score = ""
                 status = "Pending"
 
-            row = f"{student.get('role_no')},{student.get('full_name')},{score},{status}\n"
-            yield row
+            role_no = student.get("role_no", "")
+            full_name = student.get("full_name", "")
 
-    filename = f"{class_name}_{subject_name}_results_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+            yield (
+                f'"{role_no}","{full_name}",'
+                f'"{score}","{status}"\n'
+            )
+
+    # =========================
+    # FILE NAME
+    # =========================
+
+    if section_obj:
+
+        filename = (
+            f"{class_name}_"
+            f"{section_name}_"
+            f"{subject_name}_results.csv"
+        )
+
+    else:
+
+        filename = (
+            f"{class_name}_"
+            f"ALL_SECTIONS_"
+            f"{subject_name}_results.csv"
+        )
 
     return Response(
         generate(),
         mimetype="text/csv",
         headers={
-            "Content-Disposition": f"attachment; filename={filename}"
+            "Content-Disposition":
+            f'attachment; filename="{filename}"'
         }
     )
-
 
 
 @bp.route('/admin/results-report')
@@ -2594,9 +2768,7 @@ def admin_results_report():
     if current_user.role not in ['admin', 'superadmin']:
         return abort(403)
 
-    classes = list(
-        mongo.db.classrooms.find().sort("class_name", 1)
-    )
+    classes = list(mongo.db.classrooms.find().sort("class_name", 1))
 
     class_id = request.args.get("class_id")
     section_id = request.args.get("section_id")
@@ -2608,130 +2780,107 @@ def admin_results_report():
     selected_class = None
     selected_section = None
 
+    # =========================
+    # CLASS SELECTED
+    # =========================
     if class_id:
 
         try:
             class_obj = ObjectId(class_id)
-
-            selected_class = mongo.db.classrooms.find_one({
-                "_id": class_obj
-            })
-
         except:
             return abort(404)
 
-        sections = list(
-            mongo.db.sections.find({
-                "class_id": class_obj
-            })
-        )
+        selected_class = mongo.db.classrooms.find_one({"_id": class_obj})
 
-        query = {
+        # =========================
+        # LOAD SECTIONS FOR CLASS
+        # =========================
+        sections = list(mongo.db.sections.find({
             "class_id": class_obj
-        }
+        }))
+
+        # =========================
+        # BUILD STUDENT QUERY
+        # =========================
+        student_query = {"class_id": class_obj}
+
+        section_obj = None
 
         if section_id:
-
             try:
-
                 section_obj = ObjectId(section_id)
-
-                query["section_id"] = section_obj
+                student_query["section_id"] = section_obj
 
                 selected_section = mongo.db.sections.find_one({
                     "_id": section_obj
                 })
-
             except:
-                pass
+                section_obj = None
 
-        students = list(
-            mongo.db.students.find(query)
-        )
+        students = list(mongo.db.students.find(student_query))
 
-        assignments_query = {
-            "class_id": class_obj
-        }
+        # =========================
+        # GET ASSIGNMENTS
+        # =========================
+        assignments_query = {"class_id": class_obj}
 
-        if section_id:
+        if section_obj:
             assignments_query["section_id"] = section_obj
 
-        assignments = list(
-            mongo.db.teacher_assignments.find(
-                assignments_query
-            )
-        )
+        assignments = list(mongo.db.teacher_assignments.find(assignments_query))
 
-        subject_ids = []
+        subject_ids = list(set(
+            a.get("subject_id")
+            for a in assignments
+            if a.get("subject_id")
+        ))
 
-        for assignment in assignments:
+        subjects = list(mongo.db.subjects.find({
+            "_id": {"$in": subject_ids}
+        }))
 
-            sid = assignment.get("subject_id")
+        subjects.sort(key=lambda x: x.get("subject_name", ""))
 
-            if sid and sid not in subject_ids:
-                subject_ids.append(sid)
-
-        subjects = list(
-            mongo.db.subjects.find({
-                "_id": {
-                    "$in": subject_ids
-                }
-            })
-        )
-
-        subjects.sort(
-            key=lambda x: x.get("subject_name", "")
-        )
-
+        # =========================
+        # BUILD REPORT
+        # =========================
         for student in students:
 
             row = {
-
                 "student_id": str(student["_id"]),
-
                 "role_no": student.get("role_no"),
-
                 "full_name": student.get("full_name"),
-
                 "scores": []
-
             }
 
             for subject in subjects:
 
                 result = mongo.db.results.find_one({
-
                     "student_id": student["_id"],
-
                     "subject_id": subject["_id"]
-
                 })
 
-                score = ""
-
-                if result:
-                    score = result.get("score", "")
-
-                row["scores"].append(score)
+                row["scores"].append(
+                    result.get("score", "") if result else ""
+                )
 
             report.append(row)
 
+    # =========================
+    # RENDER
+    # =========================
     return render_template(
-
         "backend/pages/components/results/admin_results_report.html",
 
         classes=classes,
-
         sections=sections,
-
         subjects=subjects,
-
         report=report,
 
         selected_class=selected_class,
-
         selected_section=selected_section
     )
+
 
 
 @bp.route('/export-results-report')
@@ -2907,8 +3056,6 @@ def export_results_report():
         }
 
     )
-
-
 
 
 

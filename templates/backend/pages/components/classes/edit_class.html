@@ -16,13 +16,41 @@
 
             <div class="card-body">
 
+                <!-- Class Name -->
                 <label class="fw-bold">Class Name</label>
-
                 <input type="text"
                        name="class_name"
-                       class="form-control"
+                       class="form-control mb-3"
                        value="{{ classroom.class_name }}"
                        required>
+
+                <!-- Shift -->
+                <label class="fw-bold">Shift</label>
+                <select name="shift_name" class="form-select mb-3" required>
+                    <option value="">-- Select Shift --</option>
+
+                    <option value="Morning"
+                        {% if classroom.shift_name == 'Morning' %}selected{% endif %}>
+                        Morning
+                    </option>
+
+                    <option value="Afternoon"
+                        {% if classroom.shift_name == 'Afternoon' %}selected{% endif %}>
+                        Afternoon
+                    </option>
+
+                    <option value="Evening"
+                        {% if classroom.shift_name == 'Evening' %}selected{% endif %}>
+                        Evening
+                    </option>
+
+                </select>
+
+                <!-- Description -->
+                <label class="fw-bold">Description</label>
+                <textarea name="description"
+                          class="form-control"
+                          rows="3">{{ classroom.description }}</textarea>
 
             </div>
 

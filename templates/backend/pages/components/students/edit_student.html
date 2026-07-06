@@ -29,11 +29,12 @@
                 <!-- CLASS -->
                 <div class="mb-3">
                     <label class="fw-bold">Class</label>
-                    <select name="class_id" class="form-select" required>
+                    <select name="class_id" id="classSelect" class="form-select" required>
 
                         {% for c in classes %}
                             <option value="{{ c._id }}"
-                                {% if c._id|string == student.class_id|string %}selected{% endif %}>
+                                    data-shift="{{ c.shift_name }}"
+                                    {% if c._id|string == student.class_id|string %}selected{% endif %}>
                                 {{ c.class_name }}
                             </option>
                         {% endfor %}
@@ -41,31 +42,40 @@
                     </select>
                 </div>
 
+                <!-- SHIFT (AUTO) -->
+                <div class="mb-3">
+                    <label class="fw-bold">Shift (Auto)</label>
+                    <input type="text"
+                           id="shiftInput"
+                           class="form-control"
+                           value="{{ student.shift_name }}"
+                           readonly>
+                </div>
+
                 <!-- SECTION -->
-              <!-- SECTION -->
-<div class="mb-3">
-    <label class="fw-bold">Section (Optional)</label>
+                <div class="mb-3">
+                    <label class="fw-bold">Section (Optional)</label>
 
-    <select name="section_id" class="form-select">
+                    <select name="section_id" class="form-select">
 
-        <option value=""
-            {% if not student.section_id or student.section_id == 'None' %}
-                selected
-            {% endif %}>
-            No Section
-        </option>
+                        <option value=""
+                            {% if not student.section_id or student.section_id == 'None' %}
+                                selected
+                            {% endif %}>
+                            No Section
+                        </option>
 
-        {% for s in sections %}
-        <option value="{{ s._id }}"
-            {% if student.section_id and s._id|string == student.section_id|string %}
-                selected
-            {% endif %}>
-            {{ s.section_name }}
-        </option>
-        {% endfor %}
+                        {% for s in sections %}
+                        <option value="{{ s._id }}"
+                            {% if student.section_id and s._id|string == student.section_id|string %}
+                                selected
+                            {% endif %}>
+                            {{ s.section_name }}
+                        </option>
+                        {% endfor %}
 
-    </select>
-</div>
+                    </select>
+                </div>
 
                 <!-- STATUS -->
                 <div class="mb-3 form-check">
@@ -94,5 +104,17 @@
     </form>
 
 </div>
+
+<!-- AUTO SHIFT SCRIPT -->
+<script>
+document.getElementById("classSelect").addEventListener("change", function () {
+
+    let selected = this.options[this.selectedIndex];
+    let shift = selected.getAttribute("data-shift");
+
+    document.getElementById("shiftInput").value = shift || "";
+
+});
+</script>
 
 {% endblock %}

@@ -38,10 +38,11 @@
 <!-- FILTER CARD -->
 <div class="card border-0 shadow-sm mb-4">
 
+ <!-- FILTER CARD -->
+<div class="card border-0 shadow-sm mb-4">
+
     <div class="card-header">
-        <h5 class="mb-0">
-            Filter Results
-        </h5>
+        <h5 class="mb-0">Filter Results</h5>
     </div>
 
     <div class="card-body">
@@ -50,99 +51,68 @@
 
             <div class="row g-3">
 
+                <!-- CLASS -->
                 <div class="col-md-4">
+                    <label class="form-label">Select Class</label>
 
-                    <label class="form-label">
-                        Select Class
-                    </label>
+                    <select name="class_id"
+                            class="form-select"
+                            onchange="this.form.submit()">
 
-                    <select
-                        name="class_id"
-                        class="form-select"
-                        onchange="this.form.submit()">
-
-                        <option value="">
-                            -- Choose Class --
-                        </option>
+                        <option value="">-- Choose Class --</option>
 
                         {% for cls in classes %}
-
-                        <option
-                            value="{{ cls._id }}"
+                        <option value="{{ cls._id }}"
                             {% if selected_class and selected_class._id == cls._id %}
-                            selected
-                            {% endif %}
-                        >
+                                selected
+                            {% endif %}>
                             {{ cls.class_name }}
                         </option>
-
                         {% endfor %}
 
                     </select>
-
                 </div>
 
-                {% if sections %}
-
+                <!-- SECTION (ONLY IF EXISTS) -->
+                {% if sections and sections|length > 0 %}
                 <div class="col-md-4">
+                    <label class="form-label">Select Section</label>
 
-                    <label class="form-label">
-                        Select Section
-                    </label>
+                    <select name="section_id"
+                            class="form-select"
+                            onchange="this.form.submit()">
 
-                    <select
-                        name="section_id"
-                        class="form-select">
-
-                        <option value="">
-                            All Sections
-                        </option>
+                        <option value="">All Sections</option>
 
                         {% for sec in sections %}
-
-                        <option
-                            value="{{ sec._id }}"
+                        <option value="{{ sec._id }}"
                             {% if selected_section and selected_section._id == sec._id %}
-                            selected
-                            {% endif %}
-                        >
+                                selected
+                            {% endif %}>
                             {{ sec.section_name }}
                         </option>
-
                         {% endfor %}
 
                     </select>
-
                 </div>
-
                 {% endif %}
 
+                <!-- ACTIONS -->
                 <div class="col-md-4 d-flex align-items-end">
 
-                    <button
-                        type="submit"
-                        class="btn btn-primary me-2">
-
+                    <button type="submit" class="btn btn-primary me-2">
                         <i class="feather-filter"></i>
                         Filter
-
                     </button>
 
-                    {% if report %}
-
-                    <a
-                        href="{{ url_for(
-                            'main.export_results_report',
-                            class_id=request.args.get('class_id'),
-                            section_id=request.args.get('section_id')
-                        ) }}"
-                        class="btn btn-success">
-
+                    {% if selected_class %}
+                    <a class="btn btn-success"
+                       href="{{ url_for('main.export_results_report',
+                            class_id=selected_class._id,
+                            section_id=selected_section._id if selected_section else '') }}">
                         <i class="feather-download"></i>
                         Excel
-
                     </a>
-
                     {% endif %}
 
                 </div>
@@ -152,6 +122,7 @@
         </form>
 
     </div>
+</div>
 
 </div>
 

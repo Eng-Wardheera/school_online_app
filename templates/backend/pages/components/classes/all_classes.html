@@ -46,102 +46,134 @@
 
                     <div class="table-responsive">
 
-                        <table class="table table-hover" id="classList">
+                     <table class="table table-hover" id="classList">
 
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>Class Name</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
+    <thead class="thead-light">
+        <tr>
+            <th>#</th>
+            <th>Class Name</th>
+            <th>Shift</th>
+            <th>Description</th>
+            <th class="text-end">Actions</th>
+        </tr>
+    </thead>
 
-                            <tbody>
+    <tbody>
 
-                                {% if classes %}
+        {% if classes %}
 
-                                    {% for classroom in classes %}
-                                    <tr>
+            {% for classroom in classes %}
+            <tr>
 
-                                        <td>
-                                            {{ loop.index }}
-                                        </td>
+                <!-- Index -->
+                <td>
+                    {{ loop.index }}
+                </td>
 
-                                        <td>
-                                            <div class="d-flex align-items-center gap-3">
+                <!-- Class Name -->
+                <td>
+                    <div class="d-flex align-items-center gap-3">
 
-                                                <div class="avatar-text bg-soft-primary text-primary rounded-circle wd-50 ht-50 d-flex align-items-center justify-content-center">
-                                                    {{ classroom.class_name[0]|upper }}
-                                                </div>
+                        <div class="avatar-text bg-soft-primary text-primary rounded-circle wd-50 ht-50 d-flex align-items-center justify-content-center">
+                            {{ classroom.class_name[0]|upper }}
+                        </div>
 
-                                                <div>
-                                                    <span class="fw-bold">
-                                                        {{ classroom.class_name }}
-                                                    </span>
-                                                </div>
+                        <div>
+                            <span class="fw-bold">
+                                {{ classroom.class_name }}
+                            </span>
+                        </div>
 
-                                            </div>
-                                        </td>
+                    </div>
+                </td>
 
-                                        <td class="text-end">
+                <!-- Shift -->
+                <td>
+                    {% if classroom.shift_name %}
+                        {% if classroom.shift_name == 'Morning' %}
+                            <span class="badge bg-success">Morning</span>
+                        {% elif classroom.shift_name == 'Afternoon' %}
+                            <span class="badge bg-warning text-dark">Afternoon</span>
+                        {% elif classroom.shift_name == 'Evening' %}
+                            <span class="badge bg-info text-dark">Evening</span>
+                        {% else %}
+                            <span class="badge bg-secondary">
+                                {{ classroom.shift_name }}
+                            </span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">N/A</span>
+                    {% endif %}
+                </td>
 
-                                            <div class="hstack gap-1 justify-content-end">
+                <!-- Description -->
+                <td>
+                    {% if classroom.description %}
+                        {{ classroom.description[:30] }}{% if classroom.description|length > 30 %}...{% endif %}
+                    {% else %}
+                        <span class="text-muted">No description</span>
+                    {% endif %}
+                </td>
 
-                                                <a href="#"
-                                                   class="avatar-text avatar-md bg-soft-info text-info rounded-circle"
-                                                   data-bs-toggle="tooltip"
-                                                   title="View">
-                                                    <i class="feather-eye"></i>
-                                                </a>
+                <!-- Actions -->
+                <td class="text-end">
 
-                                                <a href="{{ url_for('main.edit_class', class_id=classroom.id) }}"
-                                                   class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle"
-                                                   data-bs-toggle="tooltip"
-                                                   title="Edit">
-                                                    <i class="feather-edit"></i>
-                                                </a>
+                    <div class="hstack gap-1 justify-content-end">
 
-                                                <form action="{{ url_for('main.delete_class', class_id=classroom.id) }}"
-                                                      method="POST"
-                                                      class="d-inline">
+                        <a href="#"
+                           class="avatar-text avatar-md bg-soft-info text-info rounded-circle"
+                           data-bs-toggle="tooltip"
+                           title="View">
+                            <i class="feather-eye"></i>
+                        </a>
 
-                                                    <button type="submit"
-                                                            class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
-                                                            onclick="return confirm('Ma hubtaa inaad tirtirayso fasalkan?');">
+                        <a href="{{ url_for('main.edit_class', class_id=classroom.id) }}"
+                           class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle"
+                           data-bs-toggle="tooltip"
+                           title="Edit">
+                            <i class="feather-edit"></i>
+                        </a>
 
-                                                        <i class="feather-trash-2"></i>
+                        <form action="{{ url_for('main.delete_class', class_id=classroom.id) }}"
+                              method="POST"
+                              class="d-inline">
 
-                                                    </button>
+                            <button type="submit"
+                                    class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
+                                    onclick="return confirm('Ma hubtaa inaad tirtirayso fasalkan?');">
 
-                                                </form>
+                                <i class="feather-trash-2"></i>
 
-                                            </div>
+                            </button>
 
-                                        </td>
+                        </form>
 
-                                    </tr>
-                                    {% endfor %}
+                    </div>
 
-                                {% else %}
+                </td>
 
-                                <tr>
-                                    <td colspan="3" class="text-center p-5">
+            </tr>
+            {% endfor %}
 
-                                        <i class="feather-book-open fs-40 text-muted d-block mb-3"></i>
+        {% else %}
 
-                                        <span class="text-muted">
-                                            Ma jiraan fasallo la diiwaangeliyey.
-                                        </span>
+        <tr>
+            <td colspan="5" class="text-center p-5">
 
-                                    </td>
-                                </tr>
+                <i class="feather-book-open fs-40 text-muted d-block mb-3"></i>
 
-                                {% endif %}
+                <span class="text-muted">
+                    Ma jiraan fasallo la diiwaangeliyey.
+                </span>
 
-                            </tbody>
+            </td>
+        </tr>
 
-                        </table>
+        {% endif %}
 
+    </tbody>
+
+</table>
                     </div>
 
                 </div>

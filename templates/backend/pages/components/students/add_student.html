@@ -29,28 +29,40 @@
                 <!-- CLASS -->
                 <div class="mb-3">
                     <label class="fw-bold">Class</label>
-                    <select name="class_id" class="form-select" required>
+                    <select name="class_id" id="classSelect" class="form-select" required>
                         <option value="">-- Select Class --</option>
                         {% for c in classes %}
-                            <option value="{{ c._id }}">{{ c.class_name }}</option>
+                            <option value="{{ c._id }}" data-shift="{{ c.shift_name }}">
+                                {{ c.class_name }}
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
 
+                <!-- SHIFT (AUTO) -->
+                <div class="mb-3">
+                    <label class="fw-bold">Shift (Auto)</label>
+                    <input type="text"
+                           id="shiftInput"
+                           class="form-control"
+                           readonly
+                           placeholder="Shift will appear automatically">
+                </div>
+
                 <!-- SECTION -->
-              <div class="mb-3">
-    <label class="fw-bold">Section (Optional)</label>
+                <div class="mb-3">
+                    <label class="fw-bold">Section (Optional)</label>
 
-    <select name="section_id" class="form-select">
-        <option value="">No Section</option>
+                    <select name="section_id" class="form-select">
+                        <option value="">No Section</option>
 
-        {% for section in sections %}
-        <option value="{{ section._id }}">
-            {{ section.section_name }}
-        </option>
-        {% endfor %}
-    </select>
-</div>
+                        {% for section in sections %}
+                        <option value="{{ section._id }}">
+                            {{ section.section_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
                 <!-- STATUS -->
                 <div class="mb-3 form-check">
@@ -76,5 +88,16 @@
     </form>
 
 </div>
+
+<!-- AUTO SHIFT SCRIPT -->
+<script>
+document.getElementById("classSelect").addEventListener("change", function () {
+
+    let selected = this.options[this.selectedIndex];
+    let shift = selected.getAttribute("data-shift");
+
+    document.getElementById("shiftInput").value = shift || "";
+});
+</script>
 
 {% endblock %}
