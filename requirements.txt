@@ -22,9 +22,6 @@ pytz
 
 pyotp
 
-authlib
-
-timedelta
-
+Authlib
 
 python-slugify
