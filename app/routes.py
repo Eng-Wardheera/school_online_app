@@ -2347,7 +2347,7 @@ def delete_all_students():
     except Exception as e:
         flash(f"Error deleting students: {str(e)}", "danger")
 
-    return redirect(url_for('main.admin_students'))
+    return redirect(url_for('main.all_students'))
 
 
 
