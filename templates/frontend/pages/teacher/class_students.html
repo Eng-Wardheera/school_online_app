@@ -35,6 +35,7 @@
     </div>
 </div>
 
+
 <!-- STATS -->
 <div class="row mb-4 g-3">
 
@@ -47,6 +48,7 @@
         </div>
     </div>
 
+
     <div class="col-md-4">
         <div class="card border-0 shadow-sm bg-success text-white">
             <div class="card-body">
@@ -55,6 +57,7 @@
             </div>
         </div>
     </div>
+
 
     <div class="col-md-4">
         <div class="card border-0 shadow-sm bg-warning text-dark">
@@ -67,229 +70,508 @@
 
 </div>
 
+
+
 <!-- SEARCH + FILTER -->
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body">
 
         <div class="row g-2 align-items-center">
 
-            <!-- SEARCH -->
             <div class="col-md-8">
+
                 <div class="input-group">
+
                     <span class="input-group-text bg-white">
                         <i class="bi bi-search"></i>
                     </span>
 
-                    <input type="text" id="searchInput"
+
+                    <input type="text"
+                           id="searchInput"
                            class="form-control"
                            placeholder="Search student name or role no...">
+
                 </div>
+
             </div>
 
-            <!-- FILTER -->
+
             <div class="col-md-4">
+
                 <select id="statusFilter" class="form-select">
+
                     <option value="all">All Students</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
+
                 </select>
+
             </div>
 
         </div>
 
     </div>
 </div>
+
+
+
 
 <!-- FORM -->
 <form method="POST" action="{{ url_for('main.save_bulk_results') }}">
 
 <input type="hidden" name="assignment_id" value="{{ assignment._id }}">
 
+
 <div class="card border-0 shadow-sm">
 
-   
 
-    <div class="card-body p-0">
+<div class="card-body p-0">
 
-        <div class="table-responsive">
+<div class="table-responsive">
 
-            <table class="table table-hover mb-0" id="studentTable">
 
-                <thead class="table-dark">
-                    <tr>
-                        <th>#</th>
-                        <!-- <th>Role No</th> -->
-                        <th>Student Name</th>
-                        <!-- <th>Status</th> -->
-                        <th>Score</th>
-                    </tr>
-                </thead>
+<table class="table table-hover mb-0" id="studentTable">
 
-                <tbody>
 
-                {% for student in students %}
+<thead class="table-dark">
 
-                <tr class="student-row"
-                    data-name="{{ student.full_name|lower }}"
-                    data-role="{{ student.role_no|lower }}"
-                    data-status="{{ 'active' if student.status else 'inactive' }}">
+<tr>
 
-                    <td>{{ loop.index }}</td>
+<th>#</th>
 
-                    <!-- <td>
-                        <span class="badge bg-dark">
-                            {{ student.role_no }}
-                        </span>
-                    </td> -->
+<th>Student Name</th>
 
-                    <td class="fw-bold">
-                        {{ student.full_name }}
-                    </td>
+<th>Score</th>
 
-                    <!-- <td>
-                        {% if student.status %}
-                            <span class="badge bg-success">Active</span>
-                        {% else %}
-                            <span class="badge bg-danger">Inactive</span>
-                        {% endif %}
-                    </td> -->
+</tr>
 
-                    <td>
-                        <input type="number"
-                               name="scores[{{ student._id }}]"
-                               class="form-control"
-                               min="0"
-                               max="50"
-                               placeholder="0 - 50"
-                               value="{{ result_map.get(student._id|string, '') }}">
-                    </td>
+</thead>
 
-                </tr>
 
-                {% endfor %}
 
-                </tbody>
+<tbody>
 
-            </table>
 
-        </div>
+{% for student in students|sort(attribute='full_name') %}
 
+
+<tr class="student-row"
+
+data-name="{{ student.full_name|lower }}"
+
+data-role="{{ student.role_no|lower }}"
+
+data-status="{{ 'active' if student.status else 'inactive' }}">
+
+
+
+<td>{{ loop.index }}</td>
+
+
+
+<td class="fw-bold">
+
+{{ student.full_name }}
+
+</td>
+
+
+
+<td>
+
+<input type="number"
+
+name="scores[{{ student._id }}]"
+
+class="form-control"
+
+min="0"
+
+max="50"
+
+placeholder="0 - 50"
+
+value="{{ result_map.get(student._id|string, '') }}">
+
+
+</td>
+
+
+
+</tr>
+
+
+{% endfor %}
+
+
+</tbody>
+
+<div class="d-flex justify-content-between align-items-center p-3">
+
+    <div>
+        <label class="fw-bold">Show:</label>
+        <select id="pageSize" class="form-select d-inline-block w-auto">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+        </select>
+        Students
     </div>
- <div class="card-header bg-white d-flex justify-content-center align-items-center">
 
-        <button type="submit" class="btn btn-primary">
-            <i class="bi bi-save"></i> Save All Results
+
+    <div class="d-flex align-items-center gap-2">
+
+        <button type="button" id="prevBtn" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i>
+            Previous
         </button>
+
+
+        <span id="pageInfo" class="fw-bold"></span>
+
+
+        <button type="button" id="nextBtn" class="btn btn-outline-primary">
+            Next
+            <i class="bi bi-arrow-right"></i>
+        </button>
+
     </div>
 
 </div>
+
+</table>
+
+
+</div>
+
+</div>
+
+
+
+<div class="card-header bg-white d-flex justify-content-center align-items-center">
+
+
+<button type="submit" class="btn btn-primary">
+
+<i class="bi bi-save"></i> Save All Results
+
+</button>
+
+
+</div>
+
+
+</div>
+
 
 </form>
 
+
 </div>
 
-<!-- JS SEARCH + FILTER -->
+
+
+
+
+
 <script>
 
 const searchInput = document.getElementById("searchInput");
 const statusFilter = document.getElementById("statusFilter");
 
-function filterTable() {
+const pageSizeSelect = document.getElementById("pageSize");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const pageInfo = document.getElementById("pageInfo");
+
+
+let currentPage = 1;
+let pageSize = 10;
+
+
+
+function getFilteredRows(){
 
     let search = searchInput.value.toLowerCase();
     let status = statusFilter.value;
 
-    document.querySelectorAll(".student-row").forEach(row => {
+
+    return Array.from(
+        document.querySelectorAll(".student-row")
+    ).filter(row=>{
+
 
         let name = row.dataset.name;
         let role = row.dataset.role;
         let st = row.dataset.status;
 
-        let matchSearch = name.includes(search) || role.includes(search);
-        let matchStatus = (status === "all") || (status === st);
 
-        if (matchSearch && matchStatus) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
+        let matchSearch =
+        name.includes(search) ||
+        role.includes(search);
+
+
+        let matchStatus =
+        status === "all" ||
+        status === st;
+
+
+        return matchSearch && matchStatus;
+
 
     });
 
+
 }
 
-searchInput.addEventListener("input", filterTable);
-statusFilter.addEventListener("change", filterTable);
-
-</script>
 
 
-  <!-- SweetAlert2 CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+function renderTable(){
 
-<!-- Flash message handling with SweetAlert2 -->
-<script>
-   // Flash message handling with SweetAlert2
-   const flashMessages = {{ get_flashed_messages(with_categories=True) | tojson | safe }};
-   
-   if (flashMessages.length > 0) {
-       const [category, message] = flashMessages[0];
-   
-       const Toast = Swal.mixin({
-           toast: true,
-           position: 'top-end',
-           showConfirmButton: false,
-           timer: 3000,
-           timerProgressBar: true,
-           background: '#fff',
-           color: '#333',
-           didOpen: (toast) => {
-               toast.addEventListener('mouseenter', Swal.stopTimer)
-               toast.addEventListener('mouseleave', Swal.resumeTimer)
-           }
-       });
-   
-       Toast.fire({
-           icon: category === "success" ? "success" : "info",
-           title: message
-       });
-   }
+
+    let rows = getFilteredRows();
+
+
+    let totalPages = Math.ceil(rows.length / pageSize);
+
+
+    if(currentPage > totalPages){
+        currentPage = totalPages || 1;
+    }
+
+
+
+    document.querySelectorAll(".student-row")
+    .forEach(row=>{
+        row.style.display="none";
+    });
+
+
+
+    let start =
+    (currentPage-1) * pageSize;
+
+
+    let end =
+    start + pageSize;
+
+
+
+    rows.slice(start,end)
+    .forEach(row=>{
+
+        row.style.display="";
+
+    });
+
+
+
+    pageInfo.innerHTML =
+    `Page ${currentPage} of ${totalPages || 1}`;
+
+
+
+    prevBtn.disabled =
+    currentPage <= 1;
+
+
+    nextBtn.disabled =
+    currentPage >= totalPages;
+
+
+
+}
+
+
+
+searchInput.addEventListener("input",()=>{
+
+    currentPage=1;
+    renderTable();
+
+});
+
+
+
+statusFilter.addEventListener("change",()=>{
+
+    currentPage=1;
+    renderTable();
+
+});
+
+
+
+pageSizeSelect.addEventListener("change",()=>{
+
+    pageSize =
+    Number(pageSizeSelect.value);
+
+    currentPage=1;
+
+    renderTable();
+
+});
+
+
+
+prevBtn.addEventListener("click",()=>{
+
+
+    if(currentPage>1){
+
+        currentPage--;
+
+        renderTable();
+
+    }
+
+
+});
+
+
+
+nextBtn.addEventListener("click",()=>{
+
+
+    let rows=getFilteredRows();
+
+    let totalPages =
+    Math.ceil(rows.length/pageSize);
+
+
+
+    if(currentPage < totalPages){
+
+        currentPage++;
+
+        renderTable();
+
+    }
+
+
+});
+
+
+
+renderTable();
+
+
 </script>
 
 
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+
+
 <script>
+
+
+const flashMessages = {{ get_flashed_messages(with_categories=True) | tojson | safe }};
+
+
+
+if(flashMessages.length > 0){
+
+
+const [category,message] = flashMessages[0];
+
+
+
+const Toast = Swal.mixin({
+
+toast:true,
+
+position:'top-end',
+
+showConfirmButton:false,
+
+timer:3000,
+
+timerProgressBar:true
+
+});
+
+
+
+Toast.fire({
+
+icon: category === "success" ? "success":"info",
+
+title:message
+
+});
+
+
+}
+
+
+</script>
+
+
+
+
+<script>
+
 
 const endTime = new Date("{{ end_time }}");
 
-function checkExpiry() {
 
-    const now = new Date();
 
-    if (now >= endTime) {
+function checkExpiry(){
 
-        clearInterval(expiryInterval);
 
-        Swal.fire({
-            icon: "error",
-            title: "Deadline Expired",
-            text: "Waqtiga gelinta natiijada wuu dhammaaday.",
-            timer: 3000,
-            timerProgressBar: true,
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            allowEscapeKey: false
-        }).then(() => {
+const now = new Date();
 
-            window.location.replace("/");
 
-        });
-    }
+
+if(now >= endTime){
+
+
+clearInterval(expiryInterval);
+
+
+
+Swal.fire({
+
+icon:"error",
+
+title:"Deadline Expired",
+
+text:"Waqtiga gelinta natiijada wuu dhammaaday.",
+
+timer:3000,
+
+timerProgressBar:true,
+
+showConfirmButton:false,
+
+allowOutsideClick:false,
+
+allowEscapeKey:false
+
+
+}).then(()=>{
+
+
+window.location.replace("/");
+
+
+});
+
+
 }
 
-const expiryInterval = setInterval(checkExpiry, 1000);
+
+}
+
+
+
+const expiryInterval = setInterval(checkExpiry,1000);
+
+
 
 </script>
 
