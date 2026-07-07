@@ -25,3 +25,5 @@ pyotp
 Authlib
 
 python-slugify
+
+openpyxl
