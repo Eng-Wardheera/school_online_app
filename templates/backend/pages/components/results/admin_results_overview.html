@@ -99,7 +99,6 @@
         </a>
     </div>
 </div>
-
 <!-- TEACHERS -->
 <div class="row">
 
@@ -109,6 +108,7 @@
 
     <div class="card border-0 shadow-lg">
 
+        <!-- HEADER -->
         <div class="card-header bg-primary text-white">
             <div class="d-flex justify-content-between align-items-center">
 
@@ -126,39 +126,48 @@
 
         <div class="card-body">
 
+            <!-- Teacher Summary -->
             <div class="row text-center mb-4">
 
                 <div class="col-4">
                     <div class="border rounded p-2">
-                        <h5 class="text-primary mb-0">{{ teacher.total_classes }}</h5>
+                        <h5 class="text-primary mb-0">
+                            {{ teacher.total_classes }}
+                        </h5>
                         <small>Classes</small>
                     </div>
                 </div>
 
                 <div class="col-4">
                     <div class="border rounded p-2">
-                        <h5 class="text-success mb-0">{{ teacher.total_students }}</h5>
+                        <h5 class="text-success mb-0">
+                            {{ teacher.total_students }}
+                        </h5>
                         <small>Students</small>
                     </div>
                 </div>
 
                 <div class="col-4">
                     <div class="border rounded p-2">
-                        <h5 class="text-danger mb-0">{{ teacher.total_results }}</h5>
+                        <h5 class="text-danger mb-0">
+                            {{ teacher.total_results }}
+                        </h5>
                         <small>Results</small>
                     </div>
                 </div>
 
             </div>
 
-            <!-- ACCORDION -->
+            <!-- Accordion -->
             <div class="accordion" id="teacherAccordion{{ loop.index }}">
 
-                {% for cls in teacher.classes %}
+            {% for cls in teacher.classes %}
 
-                {% set collapse_id = "collapse_" ~ teacher.teacher_id ~ "_" ~ loop.index %}
+                {% for subject in cls.subjects %}
 
-                <div class="accordion-item mb-3 border">
+                {% set collapse_id = "collapse_" ~ teacher.teacher_id ~ "_" ~ cls.class_id ~ "_" ~ subject.subject_id %}
+
+                <div class="accordion-item mb-3">
 
                     <h2 class="accordion-header">
 
@@ -167,19 +176,35 @@
                                 data-bs-toggle="collapse"
                                 data-bs-target="#{{ collapse_id }}">
 
-                            <div class="w-100 d-flex justify-content-between align-items-center">
+                            <div class="w-100 d-flex justify-content-between">
 
                                 <div>
+
                                     <strong>{{ cls.class_name }}</strong>
+
+                                    {% if cls.section_name %}
                                     <br>
                                     <small class="text-muted">
-                                        {{ cls.subject_name or 'Subject' }}
+                                        Section: {{ cls.section_name }}
                                     </small>
+                                    {% endif %}
+
+                                    <br>
+
+                                    <span class="badge bg-secondary mt-1">
+                                        {{ subject.subject_name }}
+                                    </span>
+
                                 </div>
 
-                                <span class="badge bg-primary">
-                                    {{ cls.total_students }} Students
-                                </span>
+                                <div class="text-end">
+
+                                    <span class="badge bg-primary">
+                                        {{ subject.total_students }}
+                                        Students
+                                    </span>
+
+                                </div>
 
                             </div>
 
@@ -187,74 +212,69 @@
 
                     </h2>
 
-                    <div id="{{ collapse_id }}" class="accordion-collapse collapse">
+                    <div id="{{ collapse_id }}"
+                         class="accordion-collapse collapse">
 
                         <div class="accordion-body">
 
-                            <div class="mb-3">
-
-                                <span class="badge bg-info">
-                                    Section: {{ cls.section_name }}
-                                </span>
-
-                                <span class="badge bg-secondary">
-                                    Subject: {{ cls.subject_name or 'N/A' }}
-                                </span>
-
-                            </div>
-
-                            <div class="row text-center">
+                            <div class="row text-center mb-3">
 
                                 <div class="col-4">
+
                                     <div class="border rounded p-2">
-                                        <strong class="text-primary">
-                                            {{ cls.total_students }}
-                                        </strong>
-                                        <br>
+
+                                        <h5 class="text-primary">
+                                            {{ subject.total_students }}
+                                        </h5>
+
                                         <small>Students</small>
+
                                     </div>
+
                                 </div>
 
                                 <div class="col-4">
+
                                     <div class="border rounded p-2">
-                                        <strong class="text-success">
-                                            {{ cls.submitted_results }}
-                                        </strong>
-                                        <br>
+
+                                        <h5 class="text-success">
+                                            {{ subject.submitted_results }}
+                                        </h5>
+
                                         <small>Submitted</small>
+
                                     </div>
+
                                 </div>
 
                                 <div class="col-4">
+
                                     <div class="border rounded p-2">
-                                        <strong class="text-danger">
-                                            {{ cls.remaining_results }}
-                                        </strong>
-                                        <br>
+
+                                        <h5 class="text-danger">
+                                            {{ subject.remaining_results }}
+                                        </h5>
+
                                         <small>Pending</small>
+
                                     </div>
+
                                 </div>
 
                             </div>
 
-                            {% set percentage =
-                                (cls.submitted_results / cls.total_students * 100)
-                                if cls.total_students else 0
-                            %}
+                            <div class="progress mb-2"
+                                 style="height:10px;">
 
-                            <div class="mt-4">
-
-                                <div class="progress" style="height:12px;">
-                                    <div class="progress-bar bg-success"
-                                         style="width:{{ percentage }}%">
-                                    </div>
+                                <div class="progress-bar bg-success"
+                                     style="width: {{ subject.progress }}%;">
                                 </div>
 
-                                <small class="text-muted">
-                                    {{ percentage|round(1) }}% Completed
-                                </small>
-
                             </div>
+
+                            <small class="text-muted">
+                                {{ subject.progress }}% Completed
+                            </small>
 
                             <div class="mt-4">
 
@@ -264,12 +284,15 @@
                                     'main.admin_class_results',
                                     teacher_id=teacher.teacher_id,
                                     class_id=cls.class_id,
-                                    subject_id=cls.subject_id,
+                                    subject_id=subject.subject_id,
                                     section_id=cls.section_id
                                 ) }}"
                                    class="btn btn-primary w-100">
+
                                     <i class="feather-eye me-1"></i>
+
                                     View Full Results
+
                                 </a>
 
                                 {% else %}
@@ -278,11 +301,14 @@
                                     'main.admin_class_results',
                                     teacher_id=teacher.teacher_id,
                                     class_id=cls.class_id,
-                                    subject_id=cls.subject_id
+                                    subject_id=subject.subject_id
                                 ) }}"
                                    class="btn btn-primary w-100">
+
                                     <i class="feather-eye me-1"></i>
+
                                     View Full Results
+
                                 </a>
 
                                 {% endif %}
@@ -296,6 +322,8 @@
                 </div>
 
                 {% endfor %}
+
+            {% endfor %}
 
             </div>
 

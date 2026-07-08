@@ -2351,286 +2351,804 @@ def delete_all_students():
 
 
 
-@bp.route('/admin/results-overview')
+def to_objectid(value):
+    if isinstance(value, ObjectId):
+        return value
+
+    try:
+        return ObjectId(str(value))
+    except Exception:
+        return None
+
+
+@bp.route("/admin/results-overview")
 @login_required
 def admin_results_overview():
 
     if current_user.role not in ["admin", "superadmin"]:
-        return abort(403)
+        abort(403)
 
-    assignments = list(mongo.db.teacher_assignments.find())
 
     teacher_map = {}
-
     unique_teachers = set()
 
     total_students = 0
     total_results = 0
 
+
+    assignments = mongo.db.teacher_assignments.find()
+
+
     for assignment in assignments:
 
-        teacher_id = assignment.get("teacher_id")
-        class_id = assignment.get("class_id")
-        section_id = assignment.get("section_id")
-        subject_id = assignment.get("subject_id")
 
-        if not teacher_id or not class_id or not subject_id:
+        teacher_oid = to_objectid(assignment.get("teacher_id"))
+        class_oid = to_objectid(assignment.get("class_id"))
+        subject_oid = to_objectid(assignment.get("subject_id"))
+        section_oid = to_objectid(assignment.get("section_id"))
+
+
+        if not teacher_oid or not class_oid or not subject_oid:
             continue
 
-        # 🔥 SAFE ObjectId handling
-        teacher = mongo.db.teachers.find_one({"_id": ObjectId(teacher_id)}) if not isinstance(teacher_id, ObjectId) else mongo.db.teachers.find_one({"_id": teacher_id})
 
-        classroom = mongo.db.classrooms.find_one({"_id": ObjectId(class_id)}) if not isinstance(class_id, ObjectId) else mongo.db.classrooms.find_one({"_id": class_id})
 
-        subject = mongo.db.subjects.find_one({"_id": ObjectId(subject_id)}) if not isinstance(subject_id, ObjectId) else mongo.db.subjects.find_one({"_id": subject_id})
+        teacher = mongo.db.teachers.find_one({
+            "_id": teacher_oid
+        })
+
+
+        classroom = mongo.db.classrooms.find_one({
+            "_id": class_oid
+        })
+
+
+        subject = mongo.db.subjects.find_one({
+            "_id": subject_oid
+        })
+
 
         section = None
-        if section_id:
-            section = mongo.db.sections.find_one({"_id": ObjectId(section_id)}) if not isinstance(section_id, ObjectId) else mongo.db.sections.find_one({"_id": section_id})
+
+        if section_oid:
+            section = mongo.db.sections.find_one({
+                "_id": section_oid
+            })
+
 
         if not teacher:
             continue
 
-        teacher_key = str(teacher["_id"])
+
+
+        teacher_key = str(teacher_oid)
+
         unique_teachers.add(teacher_key)
 
-        # =====================
-        # INIT TEACHER
-        # =====================
+
+
         if teacher_key not in teacher_map:
 
             teacher_map[teacher_key] = {
+
                 "teacher_id": teacher_key,
+
                 "teacher_name": teacher.get("full_name"),
-                "teacher_role_id": teacher.get("teacher_role_id"),
-                "total_classes": 0,
-                "total_students": 0,
-                "total_results": 0,
-                "classes": {}
+
+                "total_classes":0,
+
+                "total_students":0,
+
+                "total_results":0,
+
+                "classes":{}
+
             }
 
-        # =====================
-        # STUDENTS COUNT
-        # =====================
+
+
+        # ======================
+        # STUDENTS
+        # ======================
+
+
         student_query = {
-            "class_id": class_id
+
+            "class_id":{
+                "$in":[
+                    class_oid,
+                    str(class_oid)
+                ]
+            }
+
         }
 
-        if section_id:
-            student_query["section_id"] = section_id
 
-        class_students = mongo.db.students.count_documents(student_query)
+        if section_oid:
 
-        # =====================
-        # RESULTS COUNT
-        # =====================
-        submitted_results = len(
-            mongo.db.results.distinct(
-                "student_id",
-                {
-                    "teacher_id": teacher_id,
-                    "subject_id": subject_id
-                }
+            student_query["section_id"] = {
+
+                "$in":[
+                    section_oid,
+                    str(section_oid)
+                ]
+
+            }
+
+
+
+        students=list(
+            mongo.db.students.find(
+                student_query
             )
         )
 
-        # 🔥 SAFE DIVISION
-        progress = round(
-            (submitted_results / class_students) * 100,
-            1
-        ) if class_students > 0 else 0
 
-        pending_results = max(class_students - submitted_results, 0)
+        student_ids=[
 
-        # =====================
-        # GROUP CLASS + SECTION
-        # =====================
-        group_key = f"{class_id}_{section_id if section_id else 'nosection'}"
+            s["_id"]
+
+            for s in students
+
+        ]
+
+
+        total_class_students=len(student_ids)
+
+
+
+        # ======================
+        # RESULTS
+        # ======================
+
+
+        result_count=len(
+
+            mongo.db.results.distinct(
+
+                "student_id",
+
+                {
+
+                "teacher_id":{
+                    "$in":[
+                        teacher_oid,
+                        str(teacher_oid)
+                    ]
+                },
+
+                "subject_id":{
+                    "$in":[
+                        subject_oid,
+                        str(subject_oid)
+                    ]
+                },
+
+                "student_id":{
+                    "$in":
+                    student_ids +
+                    [
+                        str(x)
+                        for x in student_ids
+                    ]
+                }
+
+                }
+
+            )
+
+        )
+
+
+
+        pending=max(
+            total_class_students-result_count,
+            0
+        )
+
+
+        progress=0
+
+        if total_class_students:
+
+            progress=round(
+                (result_count/total_class_students)*100,
+                1
+            )
+
+
+
+        group_key=f"{class_oid}_{section_oid}"
+
+
 
         if group_key not in teacher_map[teacher_key]["classes"]:
 
-            teacher_map[teacher_key]["classes"][group_key] = {
-                "class_id": str(class_id),
-                "class_name": classroom.get("class_name") if classroom else "N/A",
 
-                "section_id": str(section_id) if section_id else None,
-                "section_name": section.get("section_name") if section else "No Section",
+            teacher_map[teacher_key]["classes"][group_key]={
 
-                "subjects": []
+                "class_id":str(class_oid),
+
+                "class_name":
+                classroom.get("class_name")
+                if classroom else "N/A",
+
+
+                "section_id":
+                str(section_oid)
+                if section_oid else None,
+
+
+                "section_name":
+                section.get("section_name")
+                if section else "No Section",
+
+
+                "subjects":[]
+
             }
 
-            teacher_map[teacher_key]["total_classes"] += 1
+
+
+            teacher_map[teacher_key]["total_classes"] +=1
+
+
+
 
         teacher_map[teacher_key]["classes"][group_key]["subjects"].append({
 
-            "subject_id": str(subject_id),
-            "subject_name": subject.get("subject_name") if subject else "N/A",
+            "subject_id":str(subject_oid),
 
-            "total_students": class_students,
-            "submitted_results": submitted_results,
-            "remaining_results": pending_results,
-            "progress": progress
+            "subject_name":
+            subject.get("subject_name")
+            if subject else "Unknown",
+
+            "total_students":total_class_students,
+
+            "submitted_results":result_count,
+
+            "remaining_results":pending,
+
+            "progress":progress
+
         })
 
-        # =====================
-        # TOTALS
-        # =====================
-        teacher_map[teacher_key]["total_students"] += class_students
-        teacher_map[teacher_key]["total_results"] += submitted_results
 
-        total_students += class_students
-        total_results += submitted_results
 
-    # =====================
-    # FINAL STRUCTURE
-    # =====================
-    teachers = []
+        teacher_map[teacher_key]["total_students"] += total_class_students
 
-    for teacher in teacher_map.values():
-        teacher["classes"] = list(teacher["classes"].values())
-        teachers.append(teacher)
+        teacher_map[teacher_key]["total_results"] += result_count
 
-    total_classes = sum(t["total_classes"] for t in teachers)
+
+
+        total_students += total_class_students
+
+        total_results += result_count
+
+
+
+
+    teachers=[]
+
+
+    for t in teacher_map.values():
+
+        t["classes"]=list(
+            t["classes"].values()
+        )
+
+        teachers.append(t)
+
+
 
     return render_template(
+
         "backend/pages/components/results/admin_results_overview.html",
 
         teachers=teachers,
 
         stats={
-            "total_teachers": len(unique_teachers),
-            "total_classes": total_classes,
-            "total_students": total_students,
-            "total_results": total_results
+
+            "total_teachers":len(unique_teachers),
+
+            "total_classes":
+            sum(
+                x["total_classes"]
+                for x in teachers
+            ),
+
+            "total_students":total_students,
+
+            "total_results":total_results
+
         }
+
+    )
+
+
+@bp.route(
+    "/admin-class-results/<teacher_id>/<class_id>/<subject_id>",
+    defaults={"section_id": None}
+)
+@bp.route(
+    "/admin-class-results/<teacher_id>/<class_id>/<subject_id>/<section_id>"
+)
+@login_required
+def admin_class_results(
+    teacher_id,
+    class_id,
+    subject_id,
+    section_id=None
+):
+
+    # ============================
+    # PERMISSION
+    # ============================
+
+    if current_user.role not in ["admin", "superadmin"]:
+        abort(403)
+
+
+
+    # ============================
+    # CONVERT IDS
+    # ============================
+
+    teacher_obj = to_objectid(teacher_id)
+    class_obj = to_objectid(class_id)
+    subject_obj = to_objectid(subject_id)
+    section_obj = to_objectid(section_id) if section_id else None
+
+
+    if not teacher_obj or not class_obj or not subject_obj:
+        abort(404)
+
+
+
+    # ============================
+    # FIND ASSIGNMENT
+    # ============================
+
+
+    assignment_query = {
+
+        "teacher_id":{
+            "$in":[
+                teacher_obj,
+                str(teacher_obj)
+            ]
+        },
+
+        "class_id":{
+            "$in":[
+                class_obj,
+                str(class_obj)
+            ]
+        },
+
+        "subject_id":{
+            "$in":[
+                subject_obj,
+                str(subject_obj)
+            ]
+        }
+
+    }
+
+
+
+    if section_obj:
+
+        assignment_query["section_id"]={
+
+            "$in":[
+                section_obj,
+                str(section_obj)
+            ]
+
+        }
+
+
+
+    assignment = mongo.db.teacher_assignments.find_one(
+        assignment_query
+    )
+
+
+    if not assignment:
+        abort(404)
+
+
+
+    # ============================
+    # LOAD INFORMATION
+    # ============================
+
+
+    teacher = mongo.db.teachers.find_one({
+
+        "_id":teacher_obj
+
+    })
+
+
+    classroom = mongo.db.classrooms.find_one({
+
+        "_id":class_obj
+
+    })
+
+
+    subject = mongo.db.subjects.find_one({
+
+        "_id":subject_obj
+
+    })
+
+
+    section=None
+
+
+    if section_obj:
+
+        section=mongo.db.sections.find_one({
+
+            "_id":section_obj
+
+        })
+
+
+
+    if not teacher or not classroom or not subject:
+        abort(404)
+
+
+
+
+    # ============================
+    # GET STUDENTS
+    # ============================
+
+
+    student_query={
+
+        "class_id":{
+
+            "$in":[
+
+                class_obj,
+                str(class_obj)
+
+            ]
+
+        }
+
+    }
+
+
+
+    if section_obj:
+
+        student_query["section_id"]={
+
+            "$in":[
+
+                section_obj,
+                str(section_obj)
+
+            ]
+
+        }
+
+
+
+    students=list(
+
+        mongo.db.students.find(
+            student_query
+        )
+        .sort(
+            "full_name",
+            1
+        )
+
     )
 
 
 
-@bp.route('/admin-class-results/<teacher_id>/<class_id>/<subject_id>',defaults={'section_id': None})
-@bp.route('/admin-class-results/<teacher_id>/<class_id>/<subject_id>/<section_id>')
-@login_required
-def admin_class_results(teacher_id, class_id, subject_id, section_id):
+    # ============================
+    # GET RESULTS
+    # ============================
 
 
-    # =========================
-    # ROLE CHECK
-    # =========================
-    if current_user.role not in ['admin', 'superadmin']:
-        return abort(403)
+    student_ids=[]
 
-    # =========================
-    # VALIDATE IDs (VERY IMPORTANT FIX)
-    # =========================
-    if not teacher_id or teacher_id == "None":
-        return abort(404)
-
-    try:
-        teacher_obj = ObjectId(teacher_id)
-        class_obj = ObjectId(class_id)
-        subject_obj = ObjectId(subject_id)
-
-        section_obj = ObjectId(section_id) if section_id else None
-
-    except:
-        return abort(404)
-
-    # =========================
-    # FETCH DATA
-    # =========================
-    teacher = mongo.db.teachers.find_one({"_id": teacher_obj})
-    classroom = mongo.db.classrooms.find_one({"_id": class_obj})
-    subject = mongo.db.subjects.find_one({"_id": subject_obj})
-
-    section = None
-    if section_obj:
-        section = mongo.db.sections.find_one({"_id": section_obj})
-
-    if not teacher or not classroom or not subject:
-        return abort(404)
-
-    # =========================
-    # STUDENTS QUERY
-    # =========================
-    query = {
-        "class_id": class_obj
-    }
-
-    if section_obj:
-        query["section_id"] = section_obj
-
-    students = list(mongo.db.students.find(query))
-
-    # =========================
-    # RESULTS
-    # =========================
-    results_data = []
-    total_students = len(students)
-    submitted_results = 0
-    total_score = 0
 
     for student in students:
 
-        result = mongo.db.results.find_one({
-            "student_id": student["_id"],
-            "teacher_id": teacher_obj,
-            "subject_id": subject_obj
+        student_ids.append(
+            student["_id"]
+        )
+
+        student_ids.append(
+            str(student["_id"])
+        )
+
+
+
+    db_results=list(
+
+        mongo.db.results.find({
+
+            "teacher_id":{
+
+                "$in":[
+
+                    teacher_obj,
+                    str(teacher_obj)
+
+                ]
+
+            },
+
+
+            "subject_id":{
+
+                "$in":[
+
+                    subject_obj,
+                    str(subject_obj)
+
+                ]
+
+            },
+
+
+            "student_id":{
+
+                "$in":student_ids
+
+            }
+
         })
 
-        if result:
-            score = result.get("score", 0)
-            submitted_results += 1
-
-            try:
-                total_score += float(score)
-            except:
-                pass
-
-            status = "Submitted"
-        else:
-            score = None
-            status = "Pending"
-
-        results_data.append({
-            "student_id": str(student["_id"]),
-            "role_no": student.get("role_no"),
-            "full_name": student.get("full_name"),
-            "score": score,
-            "status": status
-        })
-
-    # =========================
-    # STATS
-    # =========================
-    pending_results = total_students - submitted_results
-
-    completion_percentage = round(
-        (submitted_results / total_students) * 100,
-        1
-    ) if total_students > 0 else 0
-
-    average_score = round(
-        total_score / submitted_results,
-        2
-    ) if submitted_results > 0 else 0
-
-    # =========================
-    # RETURN
-    # =========================
-    return render_template(
-        "backend/pages/components/results/admin_class_results.html",
-        teacher=teacher,
-        classroom=classroom,
-        subject=subject,
-        section=section,
-        results=results_data,
-        total_students=total_students,
-        submitted_results=submitted_results,
-        pending_results=pending_results,
-        completion_percentage=completion_percentage,
-        average_score=average_score
     )
 
+
+
+
+    # map results
+
+    result_map={}
+
+
+    for result in db_results:
+
+        result_map[
+            str(result.get("student_id"))
+        ]=result
+
+
+
+
+
+    # ============================
+    # BUILD TABLE
+    # ============================
+
+
+    results=[]
+
+
+    submitted_results=0
+
+    pending_results=0
+
+    total_score=0
+
+
+
+    for student in students:
+
+
+        student_key=str(
+            student["_id"]
+        )
+
+
+        result=result_map.get(
+            student_key
+        )
+
+
+
+        if result:
+
+
+            score=result.get(
+                "score",
+                0
+            )
+
+
+            submitted_results +=1
+
+
+            try:
+
+                total_score += float(score)
+
+            except:
+
+                pass
+
+
+
+            status="Submitted"
+
+
+
+        else:
+
+
+            score=None
+
+            pending_results +=1
+
+            status="Pending"
+
+
+
+
+        results.append({
+
+            "student_id":student_key,
+
+            "role_no":
+            student.get(
+                "role_no",
+                "-"
+            ),
+
+            "full_name":
+            student.get(
+                "full_name",
+                "Unknown"
+            ),
+
+            "score":score,
+
+            "status":status
+
+        })
+
+
+
+
+
+    # ============================
+    # STATISTICS
+    # ============================
+
+
+    total_students=len(
+        students
+    )
+
+
+    completion_percentage=0
+
+
+    if total_students:
+
+        completion_percentage=round(
+
+            (
+                submitted_results /
+                total_students
+            )
+            *
+            100,
+
+            1
+
+        )
+
+
+
+    average_score=0
+
+
+    if submitted_results:
+
+        average_score=round(
+
+            total_score /
+            submitted_results,
+
+            2
+
+        )
+
+
+
+
+
+    # ============================
+    # DEBUG
+    # ============================
+
+
+    print("==============================")
+
+    print(
+        "Teacher:",
+        teacher.get("full_name")
+    )
+
+    print(
+        "Class:",
+        classroom.get("class_name")
+    )
+
+    print(
+        "Subject:",
+        subject.get("subject_name")
+    )
+
+    print(
+        "Section:",
+        section.get("section_name")
+        if section else "No Section"
+    )
+
+    print(
+        "Students:",
+        total_students
+    )
+
+    print(
+        "Submitted:",
+        submitted_results
+    )
+
+    print(
+        "Pending:",
+        pending_results
+    )
+
+    print("==============================")
+
+
+
+
+
+    return render_template(
+
+        "backend/pages/components/results/admin_class_results.html",
+
+        teacher=teacher,
+
+        classroom=classroom,
+
+        subject=subject,
+
+        section=section,
+
+        results=results,
+
+
+        total_students=total_students,
+
+        submitted_results=submitted_results,
+
+        pending_results=pending_results,
+
+        completion_percentage=completion_percentage,
+
+        average_score=average_score
+
+    )
 
 
 
