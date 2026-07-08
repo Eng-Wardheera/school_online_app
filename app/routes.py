@@ -3151,6 +3151,383 @@ def admin_class_results(
     )
 
 
+@bp.route("/admin/teacher-progress-report")
+@login_required
+def admin_teacher_progress_report():
+
+    if current_user.role not in ["admin", "superadmin"]:
+        abort(403)
+
+
+
+    teacher_data = {}
+
+    total_students = 0
+    total_submitted = 0
+
+
+
+    assignments = mongo.db.teacher_assignments.find()
+
+
+
+    for assignment in assignments:
+
+
+        teacher_id = to_objectid(
+            assignment.get("teacher_id")
+        )
+
+        class_id = to_objectid(
+            assignment.get("class_id")
+        )
+
+        subject_id = to_objectid(
+            assignment.get("subject_id")
+        )
+
+        section_id = to_objectid(
+            assignment.get("section_id")
+        )
+
+
+        if not teacher_id or not class_id or not subject_id:
+            continue
+
+
+
+        teacher = mongo.db.teachers.find_one({
+            "_id": teacher_id
+        })
+
+
+        classroom = mongo.db.classrooms.find_one({
+            "_id": class_id
+        })
+
+
+        subject = mongo.db.subjects.find_one({
+            "_id": subject_id
+        })
+
+
+        section = None
+
+        if section_id:
+
+            section = mongo.db.sections.find_one({
+                "_id": section_id
+            })
+
+
+
+        if not teacher:
+            continue
+
+
+
+        teacher_key = str(teacher_id)
+
+
+
+        if teacher_key not in teacher_data:
+
+            teacher_data[teacher_key]={
+
+                "teacher_id":teacher_key,
+
+                "teacher_name":
+                teacher.get("full_name"),
+
+                "total_students":0,
+
+                "total_submitted":0,
+
+                "total_pending":0,
+
+                "classes":[]
+
+            }
+
+
+
+
+
+        # ======================
+        # STUDENTS
+        # ======================
+
+
+        student_query={
+
+            "class_id":{
+
+                "$in":[
+                    class_id,
+                    str(class_id)
+                ]
+
+            }
+
+        }
+
+
+
+        if section_id:
+
+            student_query["section_id"]={
+
+                "$in":[
+                    section_id,
+                    str(section_id)
+                ]
+
+            }
+
+
+
+        students=list(
+
+            mongo.db.students.find(
+                student_query
+            )
+
+        )
+
+
+
+        student_ids=[
+
+            s["_id"]
+
+            for s in students
+
+        ]
+
+
+
+        total=len(student_ids)
+
+
+
+        # ======================
+        # RESULTS
+        # ======================
+
+
+        submitted=len(
+
+            mongo.db.results.distinct(
+
+                "student_id",
+
+                {
+
+                "teacher_id":{
+
+                    "$in":[
+                        teacher_id,
+                        str(teacher_id)
+                    ]
+
+                },
+
+                "subject_id":{
+
+                    "$in":[
+                        subject_id,
+                        str(subject_id)
+                    ]
+
+                },
+
+                "student_id":{
+
+                    "$in":
+                    student_ids +
+                    [
+                        str(x)
+                        for x in student_ids
+                    ]
+
+                }
+
+                }
+
+            )
+
+        )
+
+
+
+        pending=max(
+            total-submitted,
+            0
+        )
+
+
+
+        progress=0
+
+        if total:
+
+            progress=round(
+                (submitted/total)*100,
+                1
+            )
+
+
+
+
+
+        teacher_data[teacher_key]["classes"].append({
+
+            "class_id":str(class_id),
+
+            "class_name":
+            classroom.get("class_name")
+            if classroom else "N/A",
+
+
+            "section_id":
+            str(section_id)
+            if section_id else None,
+
+
+            "section_name":
+            section.get("section_name")
+            if section else "No Section",
+
+
+            "subject_id":
+            str(subject_id),
+
+
+            "subject_name":
+            subject.get("subject_name")
+            if subject else "Unknown",
+
+
+            "students":total,
+
+            "submitted":submitted,
+
+            "pending":pending,
+
+            "progress":progress
+
+        })
+
+
+
+        teacher_data[teacher_key]["total_students"] += total
+
+        teacher_data[teacher_key]["total_submitted"] += submitted
+
+        teacher_data[teacher_key]["total_pending"] += pending
+
+
+
+        total_students += total
+
+        total_submitted += submitted
+
+
+
+
+
+    # ======================
+    # SORT SUBJECTS
+    # ======================
+
+    report=[]
+
+
+    for teacher in teacher_data.values():
+
+
+        teacher["classes"].sort(
+
+            key=lambda x:
+            (
+                x["progress"],
+                x["submitted"]
+            ),
+
+            reverse=True
+
+        )
+
+
+
+        teacher["teacher_progress"]=0
+
+
+        if teacher["total_students"]:
+
+            teacher["teacher_progress"]=round(
+
+                (
+                    teacher["total_submitted"]
+                    /
+                    teacher["total_students"]
+
+                )
+                *
+                100,
+
+                1
+
+            )
+
+
+        report.append(teacher)
+
+
+
+
+
+    # ======================
+    # SORT TEACHERS
+    # ======================
+
+    report.sort(
+
+        key=lambda x:
+        (
+
+            x["total_submitted"],
+
+            x["teacher_progress"]
+
+        ),
+
+        reverse=True
+
+    )
+
+
+
+
+    return render_template(
+
+        "backend/pages/components/results/admin_teacher_progress_report.html",
+
+        report=report,
+
+
+        stats={
+
+            "teachers":len(report),
+
+            "students":total_students,
+
+            "submitted":total_submitted
+
+        }
+
+    )
+
 
 @bp.route('/edit-result/<student_id>/<subject_id>', methods=['GET', 'POST'])
 @login_required

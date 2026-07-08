@@ -1,0 +1,428 @@
+{% extends 'backend/home/base.html' %}
+
+{% block title %}Results Overview{% endblock %}
+
+{% block content %}
+
+<div class="main-content">
+ <div class="page-header">
+
+    <div class="page-header-left d-flex align-items-center">
+
+        <div class="page-header-title">
+            <h5 class="m-b-10">Results Analytics Dashboard</h5>
+        </div>
+
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+            </li>
+            <li class="breadcrumb-item">
+                Results Overview
+            </li>
+        </ul>
+
+    </div>
+
+</div>
+
+<div class="container-fluid">
+
+
+<!-- HEADER -->
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+        <h3 class="fw-bold">
+            <i class="feather-bar-chart-2"></i>
+            Teacher Progress Report
+        </h3>
+
+        <p class="text-muted">
+            Detailed subject results completion report
+        </p>
+    </div>
+
+
+    <button onclick="window.print()" 
+            class="btn btn-dark">
+
+        <i class="feather-printer"></i>
+        Print Report
+
+    </button>
+
+</div>
+
+
+
+
+<!-- STATISTICS -->
+
+<div class="row mb-4">
+
+
+<div class="col-md-4">
+
+<div class="card shadow-sm border-0">
+
+<div class="card-body text-center">
+
+<h2 class="fw-bold text-primary">
+
+{{ stats.teachers }}
+
+</h2>
+
+<p class="mb-0">
+Total Teachers
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<div class="col-md-4">
+
+<div class="card shadow-sm border-0">
+
+<div class="card-body text-center">
+
+<h2 class="fw-bold text-success">
+
+{{ stats.students }}
+
+</h2>
+
+<p class="mb-0">
+Total Students
+</p>
+
+
+</div>
+
+</div>
+
+</div>
+
+
+
+
+<div class="col-md-4">
+
+<div class="card shadow-sm border-0">
+
+<div class="card-body text-center">
+
+
+<h2 class="fw-bold text-info">
+
+{{ stats.submitted }}
+
+</h2>
+
+
+<p class="mb-0">
+Submitted Results
+</p>
+
+
+</div>
+
+</div>
+
+</div>
+
+
+</div>
+
+
+
+
+
+<!-- TEACHERS -->
+
+{% for teacher in report %}
+
+
+<div class="card shadow-sm border-0 mb-4">
+
+
+<div class="card-header bg-primary text-white">
+
+
+<h5 class="mb-0">
+
+<i class="feather-user"></i>
+
+{{ teacher.teacher_name }}
+
+</h5>
+
+
+</div>
+
+
+
+<div class="card-body">
+
+
+
+<div class="table-responsive">
+
+
+<table class="table table-hover align-middle">
+
+
+<thead class="table-light">
+
+<tr>
+
+<th>
+Class
+</th>
+
+
+<th>
+Section
+</th>
+
+
+<th>
+Subject
+</th>
+
+
+<th>
+Students
+</th>
+
+
+<th>
+Submitted
+</th>
+
+
+<th>
+Pending
+</th>
+
+
+<th width="250">
+Progress
+</th>
+
+
+</tr>
+
+</thead>
+
+
+
+<tbody>
+
+
+{% for item in teacher.classes %}
+
+
+<tr>
+
+
+<td>
+
+<span class="badge bg-secondary">
+
+{{ item.class_name }}
+
+</span>
+
+</td>
+
+
+
+<td>
+
+
+{% if item.section_name %}
+
+{{ item.section_name }}
+
+{% else %}
+
+No Section
+
+{% endif %}
+
+
+</td>
+
+
+
+
+<td>
+
+<strong>
+
+{{ item.subject_name }}
+
+</strong>
+
+
+</td>
+
+
+
+
+<td>
+
+<span class="badge bg-dark">
+
+{{ item.students }}
+
+</span>
+
+
+</td>
+
+
+
+
+
+<td>
+
+
+<span class="badge bg-success">
+
+{{ item.submitted }}
+
+</span>
+
+
+</td>
+
+
+
+
+
+
+<td>
+
+
+<span class="badge bg-danger">
+
+{{ item.pending }}
+
+</span>
+
+
+</td>
+
+
+
+
+
+
+
+<td>
+
+
+<div class="d-flex justify-content-between">
+
+
+<small>
+
+{{ item.progress }}%
+
+</small>
+
+
+
+</div>
+
+
+
+<div class="progress mt-2"
+style="height:10px;">
+
+
+{% if item.progress >= 80 %}
+
+
+<div class="progress-bar bg-success"
+style="width:{{ item.progress }}%">
+</div>
+
+
+{% elif item.progress >= 50 %}
+
+
+<div class="progress-bar bg-warning"
+style="width:{{ item.progress }}%">
+</div>
+
+
+{% else %}
+
+
+<div class="progress-bar bg-danger"
+style="width:{{ item.progress }}%">
+</div>
+
+
+{% endif %}
+
+
+
+</div>
+
+
+</td>
+
+
+
+</tr>
+
+
+{% endfor %}
+
+
+
+</tbody>
+
+
+</table>
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+{% else %}
+
+
+<div class="alert alert-warning">
+
+No progress data available.
+
+</div>
+
+
+{% endfor %}
+
+
+
+</div>
+
+</div>
+
+{% endblock %}
