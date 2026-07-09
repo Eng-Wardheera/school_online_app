@@ -3529,6 +3529,222 @@ def admin_teacher_progress_report():
     )
 
 
+@bp.route("/admin/class-progress-report")
+@login_required
+def admin_class_progress_report():
+
+    if current_user.role not in ["admin", "superadmin"]:
+        abort(403)
+
+    assignments = list(mongo.db.teacher_assignments.find())
+
+    report = {}
+    total_classes = 0
+    total_students = 0
+    total_submitted = 0
+    total_pending = 0
+
+    for assignment in assignments:
+
+        teacher_id = to_objectid(assignment.get("teacher_id"))
+        class_id = to_objectid(assignment.get("class_id"))
+        subject_id = to_objectid(assignment.get("subject_id"))
+        section_id = to_objectid(assignment.get("section_id"))
+
+        if not teacher_id or not class_id or not subject_id:
+            continue
+
+        teacher = mongo.db.teachers.find_one({"_id": teacher_id})
+        classroom = mongo.db.classrooms.find_one({"_id": class_id})
+        subject = mongo.db.subjects.find_one({"_id": subject_id})
+
+        section = None
+        if section_id:
+            section = mongo.db.sections.find_one({"_id": section_id})
+
+        if not classroom:
+            continue
+
+        # ==========================
+        # REAL STUDENTS
+        # ==========================
+
+        student_query = {
+            "class_id": {
+                "$in": [
+                    class_id,
+                    str(class_id)
+                ]
+            }
+        }
+
+        if section_id:
+            student_query["section_id"] = {
+                "$in": [
+                    section_id,
+                    str(section_id)
+                ]
+            }
+
+        # Haddii aad leedahay status/is_active ku dar halkan
+        # student_query["status"] = True
+
+        students = list(
+            mongo.db.students.find(
+                student_query,
+                {
+                    "_id": 1
+                }
+            )
+        )
+
+        student_ids = []
+
+        for student in students:
+            student_ids.append(student["_id"])
+            student_ids.append(str(student["_id"]))
+
+        total_class_students = len(students)
+
+        # ==========================
+        # RESULTS
+        # ==========================
+
+        submitted = len(
+
+            mongo.db.results.distinct(
+
+                "student_id",
+
+                {
+
+                    "teacher_id": {
+                        "$in": [
+                            teacher_id,
+                            str(teacher_id)
+                        ]
+                    },
+
+                    "subject_id": {
+                        "$in": [
+                            subject_id,
+                            str(subject_id)
+                        ]
+                    },
+
+                    "student_id": {
+                        "$in": student_ids
+                    }
+
+                }
+
+            )
+
+        )
+
+        pending = max(total_class_students - submitted, 0)
+
+        progress = (
+            round(submitted * 100 / total_class_students, 1)
+            if total_class_students
+            else 0
+        )
+
+        group_key = f"{class_id}_{section_id if section_id else 'nosection'}"
+
+        if group_key not in report:
+
+            report[group_key] = {
+
+                "class_id": str(class_id),
+
+                "class_name": classroom.get(
+                    "class_name",
+                    "N/A"
+                ),
+
+                "section_id": (
+                    str(section_id)
+                    if section_id
+                    else None
+                ),
+
+                "section_name": (
+                    section.get("section_name")
+                    if section
+                    else "No Section"
+                ),
+
+                "students": total_class_students,
+
+                "submitted": 0,
+
+                "pending": 0,
+
+                "subjects": []
+
+            }
+
+            total_classes += 1
+
+        report[group_key]["subjects"].append({
+
+            "teacher_id": str(teacher_id),
+
+            "teacher_name": (
+                teacher.get("full_name")
+                if teacher
+                else "Unknown"
+            ),
+
+            "subject_id": str(subject_id),
+
+            "subject_name": (
+                subject.get("subject_name")
+                if subject
+                else "Unknown"
+            ),
+
+            "students": total_class_students,
+
+            "submitted": submitted,
+
+            "pending": pending,
+
+            "progress": progress
+
+        })
+
+        report[group_key]["submitted"] += submitted
+        report[group_key]["pending"] += pending
+
+        total_students += total_class_students
+        total_submitted += submitted
+        total_pending += pending
+
+    report = sorted(
+        report.values(),
+        key=lambda item: (
+            item["class_name"],
+            item["section_name"]
+        )
+    )
+
+    return render_template(
+        "backend/pages/components/results/admin_class_progress_report.html",
+        report=report,
+        stats={
+            "classes": total_classes,
+            "students": total_students,
+            "submitted": total_submitted,
+            "pending": total_pending
+        }
+    )
+
+
+
+
+
 @bp.route('/edit-result/<student_id>/<subject_id>', methods=['GET', 'POST'])
 @login_required
 def edit_result(student_id, subject_id):
