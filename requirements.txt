@@ -4,7 +4,7 @@ Flask-Login
 Flask-Mail
 Flask-WTF
 Flask-PyMongo
-
+pandas
 Werkzeug
 itsdangerous
 gunicorn

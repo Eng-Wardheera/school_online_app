@@ -8,10 +8,8 @@ from pyclbr import Class
 import random
 import secrets
 import traceback
-from turtle import pd
 import uuid
 import re
-import pandas as pd  # Hubi inaanan meel kale ku magacaabin variable la yiraahdo pd
 
 from bson import ObjectId
 from flask import Blueprint, Response, abort, current_app, flash, make_response, redirect, render_template, request, send_file, session, url_for
