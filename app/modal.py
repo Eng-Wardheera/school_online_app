@@ -202,6 +202,31 @@ class Subject:
         self.created_at = self.data.get("created_at")
         self.updated_at = self.data.get("updated_at")
 
+class StudentStatistics:
+    def __init__(self, data):
+        self.data = data or {}
+
+        self.id = str(self.data.get("_id"))
+
+        self.student_id = str(self.data.get("student_id"))
+
+        self.total_score = self.data.get("total_score", 0)
+        self.average = self.data.get("average", 0)
+        self.grade = self.data.get("grade")
+
+        self.class_position = self.data.get("class_position")
+        self.total_class_students = self.data.get("total_class_students")
+
+        self.school_position = self.data.get("school_position")
+        self.total_school_students = self.data.get("total_school_students")
+
+        # haddii score la beddelo waxaad ka dhigi kartaa True
+        self.need_recalculate = self.data.get("need_recalculate", False)
+
+        self.created_at = self.data.get("created_at")
+        self.updated_at = self.data.get("updated_at")
+
+        
 
 class Result:
     def __init__(self, data):
@@ -216,6 +241,38 @@ class Result:
         self.updated_at = self.data.get("updated_at")
 
         
+
+
+
+class ResultImportBatch:
+    def __init__(self, data):
+        self.data = data or {}
+
+        self.id = str(self.data.get("_id"))
+
+        # Academic Info
+        self.academic_year = self.data.get("academic_year")
+        self.exam_type = self.data.get("exam_type")      # Mid, Final
+        self.class_id = str(self.data.get("class_id"))
+        self.section_id = str(self.data.get("section_id"))
+
+        # Excel Info
+        self.file_name = self.data.get("file_name")
+        self.sheet_name = self.data.get("sheet_name")
+
+        # Subject headers extracted from Excel
+        self.subjects = self.data.get("subjects", [])
+
+        # Imported students
+        self.students = self.data.get("students", [])
+
+        # Import Status
+        self.status = self.data.get("status", "Pending")
+        self.imported_by = self.data.get("imported_by")
+
+        self.created_at = self.data.get("created_at")
+        self.updated_at = self.data.get("updated_at")
+
 
 class Session:
     def __init__(self, data):

@@ -1,0 +1,92 @@
+{% extends 'backend/home/base.html' %}
+
+{% block title %}Import Results{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+
+    <div class="page-header-left d-flex align-items-center">
+
+        <div class="page-header-title">
+            <h5 class="m-b-10">Result Import</h5>
+        </div>
+
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.dashboard') }}">Home</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.result_imports') }}">Result Import</a>
+            </li>
+            <li class="breadcrumb-item">Import Excel</li>
+        </ul>
+
+    </div>
+
+</div>
+
+<div class="main-content">
+
+    <div class="card">
+
+        <div class="card-header">
+            <h5 class="card-title">Import Result Excel</h5>
+        </div>
+
+        <div class="card-body">
+
+         <form method="POST"
+      action="{{ url_for('main.save_result_import') }}"
+      enctype="multipart/form-data">
+
+
+<div class="mb-3">
+
+<label>Academic Year</label>
+
+<input type="text"
+name="academic_year"
+class="form-control"
+value="2025-2026">
+
+</div>
+
+
+
+
+
+<div class="mb-3">
+
+<label>Excel File</label>
+
+
+<input type="file"
+name="excel_file"
+class="form-control"
+accept=".xlsx,.xls">
+
+
+<small>
+Upload only Excel
+</small>
+
+
+</div>
+
+
+
+<button class="btn btn-primary">
+Import Result
+</button>
+
+
+</form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

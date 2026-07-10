@@ -8,7 +8,10 @@ from pyclbr import Class
 import random
 import secrets
 import traceback
+from turtle import pd
 import uuid
+import re
+import pandas as pd  # Hubi inaanan meel kale ku magacaabin variable la yiraahdo pd
 
 from bson import ObjectId
 from flask import Blueprint, Response, abort, current_app, flash, make_response, redirect, render_template, request, send_file, session, url_for
@@ -56,7 +59,6 @@ def create_guest_session(mongo):
 #--------------- Forntend Section
 #-======================================
 
-from datetime import datetime, timedelta
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
@@ -514,9 +516,338 @@ def save_bulk_results():
 
 
 
+@bp.route('/student-login', methods=['GET','POST'])
+def student_login():
+
+    if request.method == "POST":
+
+        role_no = request.form.get(
+            "role_no",
+            ""
+        ).strip()
+
+
+        student = mongo.db.students.find_one({
+
+            "role_no": role_no
+
+        })
+
+
+        if not student:
+
+            flash(
+                "Student ID lama helin!",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "main.student_login"
+                )
+            )
 
 
 
+        return redirect(
+
+            url_for(
+
+                "main.student_dashboard",
+
+                student_id=str(student["_id"])
+
+            )
+
+        )
+
+
+
+    return render_template(
+        "frontend/pages/student/login.html"
+    )
+
+
+@bp.route('/student-dashboard/<student_id>')
+def student_dashboard(student_id):
+
+
+    student = mongo.db.students.find_one({
+
+        "_id": ObjectId(student_id)
+
+    })
+
+
+    if not student:
+
+        abort(404)
+
+
+
+    # ======================
+    # CLASS
+    # ======================
+
+    classroom = None
+
+
+    if student.get("class_id"):
+
+        classroom = mongo.db.classrooms.find_one({
+
+            "_id": ObjectId(
+                student["class_id"]
+            )
+
+        })
+
+
+
+    class_name = (
+
+        classroom.get("class_name")
+
+        if classroom
+
+        else "N/A"
+
+    )
+
+
+
+    # ======================
+    # SECTION OPTIONAL
+    # ======================
+
+    section_name = "N/A"
+
+
+    if student.get("section_id"):
+
+
+        section = mongo.db.sections.find_one({
+
+            "_id": ObjectId(
+                student["section_id"]
+            )
+
+        })
+
+
+        if section:
+
+            section_name = section.get(
+                "section_name"
+            )
+
+
+
+    return render_template(
+
+        "frontend/pages/student/dashboard.html",
+
+        student=student,
+
+        class_name=class_name,
+
+        section_name=section_name
+
+    )
+
+
+
+@bp.route('/student-results/<student_id>')
+def student_results(student_id):
+
+    student = mongo.db.students.find_one({
+        "_id": ObjectId(student_id)
+    })
+
+    if not student:
+        return "Student Not Found", 404
+
+    results = {}
+
+    cursor = mongo.db.student_results.find({
+        "student_id": student_id
+    }).sort("created_at", -1)
+
+    # ============================================
+    # SUBJECT RESULTS
+    # ============================================
+    for r in cursor:
+
+        subject = mongo.db.subjects.find_one({
+            "_id": ObjectId(r["subject_id"])
+        })
+
+        if not subject:
+            continue
+
+        subject_name = subject.get("subject_name", "N/A")
+
+        if subject_name not in results:
+            results[subject_name] = {
+                "subject": subject_name,
+                "exams": [],
+                "total": 0
+            }
+
+        score = r.get("score", 0)
+
+        results[subject_name]["exams"].append({
+            "type": r.get("exam_type"),
+            "score": score
+        })
+
+        results[subject_name]["total"] += score
+
+    # ============================================
+    # TOTAL SCORE
+    # ============================================
+    grand_total = sum(item["total"] for item in results.values())
+
+    # ============================================
+    # SUBJECT COUNT
+    # ============================================
+    total_subjects = len(results)
+
+    # ============================================
+    # AVERAGE
+    # ============================================
+    average = round(
+        grand_total / total_subjects,
+        2
+    ) if total_subjects else 0
+
+    # ============================================
+    # GRADE
+    # ============================================
+    if average >= 90:
+        grade = "A+"
+    elif average >= 80:
+        grade = "A"
+    elif average >= 70:
+        grade = "B+"
+    elif average >= 60:
+        grade = "B"
+    elif average >= 50:
+        grade = "C"
+    elif average >= 40:
+        grade = "D"
+    else:
+        grade = "F"
+
+    # ============================================
+    # CLASS RANKING
+    # ============================================
+
+    classmates = list(
+        mongo.db.students.find({
+            "class_id": student["class_id"],
+            "section_id": student["section_id"]
+        })
+    )
+
+    class_ranking = []
+
+    for s in classmates:
+
+        total = 0
+
+        marks = mongo.db.student_results.find({
+            "student_id": str(s["_id"])
+        })
+
+        for mark in marks:
+            total += mark.get("score", 0)
+
+        class_ranking.append({
+            "student_id": str(s["_id"]),
+            "total": total
+        })
+
+    class_ranking.sort(
+        key=lambda x: x["total"],
+        reverse=True
+    )
+
+    class_position = "-"
+
+    for index, item in enumerate(class_ranking, start=1):
+        if item["student_id"] == student_id:
+            class_position = index
+            break
+
+    total_class_students = len(class_ranking)
+
+    # ============================================
+    # SCHOOL RANKING
+    # ============================================
+
+    all_students = list(
+        mongo.db.students.find()
+    )
+
+    school_ranking = []
+
+    for s in all_students:
+
+        total = 0
+
+        marks = mongo.db.student_results.find({
+            "student_id": str(s["_id"])
+        })
+
+        for mark in marks:
+            total += mark.get("score", 0)
+
+        school_ranking.append({
+            "student_id": str(s["_id"]),
+            "total": total
+        })
+
+    school_ranking.sort(
+        key=lambda x: x["total"],
+        reverse=True
+    )
+
+    school_position = "-"
+
+    for index, item in enumerate(school_ranking, start=1):
+        if item["student_id"] == student_id:
+            school_position = index
+            break
+
+    total_school_students = len(school_ranking)
+
+    # ============================================
+    # RENDER
+    # ============================================
+
+    return render_template(
+        "frontend/pages/student/results.html",
+
+        student=student,
+        student_id=student_id,
+
+        results=list(results.values()),
+
+        grand_total=grand_total,
+        average=average,
+        grade=grade,
+
+        total_subjects=total_subjects,
+
+        class_position=class_position,
+        total_class_students=total_class_students,
+
+        school_position=school_position,
+        total_school_students=total_school_students
+    )
+
+    
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -4295,6 +4626,745 @@ def export_results_report():
 
     )
 
+
+@bp.route("/all-student-results")
+@login_required
+def all_student_results():
+
+    if current_user.role not in ["superadmin", "admin"]:
+        return abort(403)
+
+
+    results = []
+
+
+    for r in mongo.db.student_results.find().sort(
+        "created_at",
+        -1
+    ):
+
+
+        # ==============================
+        # STUDENT
+        # ==============================
+
+        student = None
+
+        if r.get("student_id"):
+
+            try:
+                student = mongo.db.students.find_one({
+                    "_id": ObjectId(r["student_id"])
+                })
+            except:
+                pass
+
+
+
+        # ==============================
+        # SUBJECT
+        # ==============================
+
+        subject = None
+
+        if r.get("subject_id"):
+
+            try:
+                subject = mongo.db.subjects.find_one({
+                    "_id": ObjectId(r["subject_id"])
+                })
+            except:
+                pass
+
+
+
+        class_name = "N/A"
+        section_name = "N/A"
+
+        teacher_name = "No Teacher"
+
+
+        class_id = None
+        section_id = None
+
+
+
+        # ==============================
+        # STUDENT CLASS
+        # ==============================
+
+        if student:
+
+
+            class_id = student.get("class_id")
+
+            section_id = student.get("section_id")
+
+
+
+            classroom = None
+
+
+            if class_id:
+
+                try:
+
+                    classroom = mongo.db.classrooms.find_one({
+                        "_id": ObjectId(class_id)
+                    })
+
+                except:
+
+                    pass
+
+
+
+            if classroom:
+
+                class_name = classroom.get(
+                    "class_name",
+                    "N/A"
+                )
+
+
+
+            # SECTION OPTIONAL
+
+            if section_id:
+
+                try:
+
+                    section = mongo.db.sections.find_one({
+                        "_id": ObjectId(section_id)
+                    })
+
+                    if section:
+
+                        section_name = section.get(
+                            "section_name",
+                            "N/A"
+                        )
+
+                except:
+
+                    pass
+
+
+
+
+
+        # ==============================
+        # FIND TEACHER
+        # ==============================
+
+
+        if subject and class_name != "N/A":
+
+
+
+            # Get all possible classes with same name
+
+            classes = list(
+                mongo.db.classrooms.find({
+                    "class_name": class_name
+                })
+            )
+
+
+
+            class_ids = [
+                c["_id"]
+                for c in classes
+            ]
+
+
+
+            assignment = None
+
+
+
+            # With section first
+
+            if section_id:
+
+
+                assignment = mongo.db.teacher_assignments.find_one({
+
+                    "class_id":{
+                        "$in": class_ids
+                    },
+
+                    "section_id":
+                    ObjectId(section_id),
+
+                    "subject_id":
+                    subject["_id"]
+
+                })
+
+
+
+
+            # Without section
+
+            if not assignment:
+
+
+                assignment = mongo.db.teacher_assignments.find_one({
+
+                    "class_id":{
+                        "$in": class_ids
+                    },
+
+                    "subject_id":
+                    subject["_id"]
+
+                })
+
+
+
+
+
+            if assignment:
+
+
+                teacher_id = assignment.get(
+                    "teacher_id"
+                )
+
+
+
+                if teacher_id:
+
+
+                    teacher = mongo.db.teachers.find_one({
+
+                        "_id": teacher_id
+
+                    })
+
+
+                    if teacher:
+
+                        teacher_name = teacher.get(
+                            "full_name",
+                            "No Teacher"
+                        )
+
+
+
+
+
+
+        # ==============================
+        # RESULT DATA
+        # ==============================
+
+        results.append({
+
+
+            "id":
+            str(r["_id"]),
+
+
+            "role_no":
+
+            student.get("role_no")
+            if student else "N/A",
+
+
+            "student_name":
+
+            student.get("full_name")
+            if student else "N/A",
+
+
+            "class_name":
+
+            class_name,
+
+
+            "section_name":
+
+            section_name,
+
+
+            "subject_name":
+
+            subject.get("subject_name")
+            if subject else "N/A",
+
+
+            "teacher_name":
+
+            teacher_name,
+
+
+            "exam_type":
+
+            r.get("exam_type","N/A"),
+
+
+            "score":
+
+            r.get("score",0),
+
+
+            "exam_date":
+
+            r.get("exam_date","N/A"),
+
+
+            "created_at":
+
+            r.get("created_at")
+
+        })
+
+
+
+    return render_template(
+
+        "backend/pages/components/results/all_student_results.html",
+
+        results=results
+
+    )
+
+
+@bp.route('/export-student-results')
+@login_required
+def export_student_results():
+
+    if current_user.role not in ['superadmin', 'admin']:
+        return abort(403)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # HEADER
+    writer.writerow([
+        "Student ID",
+        "Student Name",
+        "Subject",
+        "Exam Type",
+        "Score",
+        "Exam Date"
+    ])
+
+    results = list(mongo.db.student_results.find())
+
+    # --------------------------------------------------
+    # IF EMPTY -> DOWNLOAD SAMPLE TEMPLATE
+    # --------------------------------------------------
+    if len(results) == 0:
+
+        writer.writerow([
+            "STD-0001",
+            "Ahmed Ali",
+            "English",
+            "monthly_1",
+            "8",
+            "2026-01-10"
+        ])
+
+        writer.writerow([
+            "STD-0001",
+            "Ahmed Ali",
+            "English",
+            "midterm",
+            "22",
+            "2026-02-15"
+        ])
+
+        writer.writerow([
+            "STD-0001",
+            "Ahmed Ali",
+            "English",
+            "monthly_2",
+            "7",
+            "2026-03-20"
+        ])
+
+        writer.writerow([
+            "STD-0001",
+            "Ahmed Ali",
+            "English",
+            "final",
+            "40",
+            "2026-05-01"
+        ])
+
+        writer.writerow([
+            "STD-0001",
+            "Ahmed Ali",
+            "Technology",
+            "monthly_1",
+            "9",
+            "2026-01-10"
+        ])
+
+        writer.writerow([
+            "STD-0001",
+            "Ahmed Ali",
+            "Technology",
+            "midterm",
+            "25",
+            "2026-02-15"
+        ])
+
+        writer.writerow([
+            "STD-0001",
+            "Ahmed Ali",
+            "Technology",
+            "monthly_2",
+            "6",
+            "2026-03-20"
+        ])
+
+        writer.writerow([
+            "STD-0001",
+            "Ahmed Ali",
+            "Technology",
+            "final",
+            "42",
+            "2026-05-01"
+        ])
+
+    # --------------------------------------------------
+    # EXPORT REAL DATA
+    # --------------------------------------------------
+    else:
+
+        for r in results:
+
+            student = mongo.db.students.find_one({
+                "_id": ObjectId(r["student_id"])
+            })
+
+            subject = mongo.db.subjects.find_one({
+                "_id": ObjectId(r["subject_id"])
+            })
+
+            writer.writerow([
+
+                student.get("role_no") if student else "",
+
+                student.get("full_name") if student else "",
+
+                subject.get("subject_name") if subject else "",
+
+                r.get("exam_type"),
+
+                r.get("score"),
+
+                r.get("exam_date")
+
+            ])
+
+    output.seek(0)
+
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition":
+            "attachment; filename=student_results_template.csv"
+        }
+    )
+
+
+
+@bp.route('/import-student-results', methods=['POST'])
+@login_required
+def import_student_results():
+
+    if current_user.role not in ['superadmin', 'admin']:
+        return abort(403)
+
+    file = request.files.get("file")
+
+    if not file:
+        flash("Please select a CSV file.", "danger")
+        return redirect(url_for("main.all_student_results"))
+
+    stream = io.StringIO(
+        file.stream.read().decode("UTF8"),
+        newline=None
+    )
+
+    reader = csv.DictReader(stream)
+
+    imported = 0
+    skipped = 0
+
+    for row in reader:
+
+        student_role = row.get("Student ID", "").strip()
+        subject_name = row.get("Subject", "").strip()
+        exam_type = row.get("Exam Type", "").strip().lower()
+        score = row.get("Score", "").strip()
+        exam_date = row.get("Exam Date", "").strip()
+
+        # Required Fields
+        if not student_role or not subject_name or not exam_type:
+            skipped += 1
+            continue
+
+        # Student
+        student = mongo.db.students.find_one({
+            "role_no": student_role
+        })
+
+        if not student:
+            skipped += 1
+            continue
+
+        # Subject
+        subject = mongo.db.subjects.find_one({
+            "subject_name": subject_name
+        })
+
+        if not subject:
+            skipped += 1
+            continue
+
+        # Exam Type Validation
+        valid_exam_types = [
+            "monthly_1",
+            "midterm",
+            "monthly_2",
+            "final"
+        ]
+
+        if exam_type not in valid_exam_types:
+            skipped += 1
+            continue
+
+        # Teacher (optional)
+        assignment = mongo.db.teacher_assignments.find_one({
+            "class_id": str(student.get("class_id")),
+            "section_id": str(student.get("section_id")),
+            "subject_id": str(subject["_id"])
+        })
+
+        teacher_id = None
+
+        if assignment:
+            teacher_id = assignment.get("teacher_id")
+
+        # Prevent Duplicate Result
+        exists = mongo.db.student_results.find_one({
+            "student_id": str(student["_id"]),
+            "subject_id": str(subject["_id"]),
+            "exam_type": exam_type
+        })
+
+        if exists:
+            skipped += 1
+            continue
+
+        try:
+            score = float(score)
+        except:
+            score = 0
+
+        mongo.db.student_results.insert_one({
+
+            "student_id": str(student["_id"]),
+
+            "subject_id": str(subject["_id"]),
+
+            "teacher_id": teacher_id,
+
+            "exam_type": exam_type,
+
+            "score": score,
+
+            "exam_date": exam_date,
+
+            "created_at": datetime.utcnow(),
+
+            "updated_at": datetime.utcnow()
+
+        })
+
+        imported += 1
+
+    flash(
+        f"{imported} results imported successfully. {skipped} rows skipped.",
+        "success"
+    )
+
+    return redirect(url_for("main.all_student_results"))
+
+
+
+@bp.route('/delete-student-result/<result_id>', methods=['POST'])
+@login_required
+def delete_student_result(result_id):
+
+    if current_user.role not in ['superadmin', 'admin']:
+        return abort(403)
+
+    result = mongo.db.student_results.find_one({
+        "_id": ObjectId(result_id)
+    })
+
+    if not result:
+        flash("Student result not found.", "danger")
+        return redirect(url_for("main.all_student_results"))
+
+    mongo.db.student_results.delete_one({
+        "_id": ObjectId(result_id)
+    })
+
+    flash("Student result deleted successfully.", "success")
+
+    return redirect(url_for("main.all_student_results"))
+
+
+
+@bp.route('/edit-student-result/<result_id>', methods=['GET', 'POST'])
+@login_required
+def edit_student_result(result_id):
+
+    if current_user.role not in ['superadmin', 'admin']:
+        return abort(403)
+
+    result = mongo.db.student_results.find_one({
+        "_id": ObjectId(result_id)
+    })
+
+    if not result:
+        flash("Student result not found.", "danger")
+        return redirect(url_for("main.all_student_results"))
+
+    if request.method == "POST":
+
+        subject_id = request.form.get("subject_id")
+        exam_type = request.form.get("exam_type")
+        score = request.form.get("score")
+        exam_date = request.form.get("exam_date")
+
+        # Validation
+        if not subject_id or not exam_type:
+            flash("Please fill all required fields.", "danger")
+            return redirect(request.url)
+
+        try:
+            score = float(score)
+        except:
+            score = 0
+
+        # Duplicate check
+        duplicate = mongo.db.student_results.find_one({
+            "_id": {"$ne": ObjectId(result_id)},
+            "student_id": result["student_id"],
+            "subject_id": subject_id,
+            "exam_type": exam_type
+        })
+
+        if duplicate:
+            flash(
+                "This student already has this exam result for the selected subject.",
+                "warning"
+            )
+            return redirect(request.url)
+
+        # Find Teacher Assignment
+        student = mongo.db.students.find_one({
+            "_id": ObjectId(result["student_id"])
+        })
+
+        teacher_id = result.get("teacher_id")
+
+        if student:
+
+            assignment = mongo.db.teacher_assignments.find_one({
+                "class_id": str(student.get("class_id")),
+                "section_id": str(student.get("section_id")),
+                "subject_id": subject_id
+            })
+
+            if assignment:
+                teacher_id = assignment.get("teacher_id")
+
+        mongo.db.student_results.update_one(
+            {"_id": ObjectId(result_id)},
+            {
+                "$set": {
+
+                    "subject_id": subject_id,
+
+                    "teacher_id": teacher_id,
+
+                    "exam_type": exam_type,
+
+                    "score": score,
+
+                    "exam_date": exam_date,
+
+                    "updated_at": datetime.utcnow()
+
+                }
+            }
+        )
+
+        flash("Student result updated successfully.", "success")
+
+        return redirect(url_for("main.all_student_results"))
+
+    # -----------------------------
+    # GET DATA
+    # -----------------------------
+
+    student = mongo.db.students.find_one({
+        "_id": ObjectId(result["student_id"])
+    })
+
+    subjects = list(
+        mongo.db.subjects.find().sort("subject_name", 1)
+    )
+
+    return render_template(
+
+        "backend/pages/components/results/edit_student_result.html",
+
+        result=result,
+
+        student=student,
+
+        subjects=subjects
+
+    )
+
+
+@bp.route('/delete-all-student-results', methods=['POST'])
+@login_required
+def delete_all_student_results():
+
+    # Only Super Admin & Admin
+    if current_user.role not in ['superadmin', 'admin']:
+        return abort(403)
+
+    try:
+
+        result = mongo.db.student_results.delete_many({})
+
+        flash(
+            f"{result.deleted_count} student result(s) deleted successfully!",
+            "success"
+        )
+
+    except Exception as e:
+
+        flash(
+            f"Error deleting student results: {str(e)}",
+            "danger"
+        )
+
+    return redirect(url_for("main.all_student_results"))
 
 
 

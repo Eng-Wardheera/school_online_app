@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Student Results</title>
+
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+rel="stylesheet">
+
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+rel="stylesheet">
+
+
+
+<style>
+
+
+body{
+
+background:#f4f7fb;
+font-family:Arial;
+
+}
+
+
+/* HEADER */
+
+.student-header{
+
+background:#453b91;
+
+color:white;
+
+padding:25px;
+
+border-radius:0 0 25px 25px;
+
+}
+
+
+
+.info-box{
+
+background:white;
+
+border-radius:18px;
+
+padding:25px;
+
+margin-top:25px;
+
+box-shadow:0 5px 20px #ddd;
+
+}
+
+
+
+/* SUBJECT CARD */
+
+
+.subject-card{
+
+background:#fff;
+
+border-radius:15px;
+
+padding:18px;
+
+box-shadow:0 4px 15px rgba(0,0,0,.08);
+
+margin-bottom:20px;
+
+}
+
+
+
+.subject-title{
+
+background:#eef0f8;
+
+padding:15px;
+
+border-radius:12px;
+
+font-weight:bold;
+
+color:#344b9b;
+
+}
+
+
+
+.exam-box{
+
+
+background:#f7f8fc;
+
+border-radius:12px;
+
+padding:12px;
+
+text-align:center;
+
+
+}
+
+
+.exam-title{
+
+font-size:12px;
+
+color:#777;
+
+}
+
+
+.exam-score{
+
+font-weight:bold;
+
+color:#344b9b;
+
+font-size:18px;
+
+}
+
+
+
+.total-box{
+
+background:#eaf0ff;
+
+padding:15px;
+
+border-radius:12px;
+
+text-align:center;
+
+font-weight:bold;
+
+}
+
+
+
+</style>
+
+
+</head>
+
+
+
+<body>
+
+
+
+<div class="student-header">
+
+
+<div class="container">
+
+
+<div class="d-flex justify-content-between">
+
+
+<div>
+
+<h3>
+
+<i class="bi bi-person-circle"></i>
+
+{{ student.full_name }}
+
+</h3>
+
+
+<p class="mb-0">
+
+Student ID: {{ student.role_no }}
+
+</p>
+
+
+</div>
+
+
+
+<a href="{{ url_for('main.student_dashboard',
+student_id=student_id) }}"
+class="btn btn-light">
+
+
+<i class="bi bi-arrow-left"></i>
+
+Dashboard
+
+</a>
+
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+<div class="container">
+
+
+<div class="info-box">
+
+
+<div class="row">
+
+
+<div class="col-md-4">
+
+<h6>
+
+Student ID
+
+</h6>
+
+<h4>
+
+{{student.role_no}}
+
+</h4>
+
+</div>
+
+
+<div class="col-md-4">
+
+<h6>
+
+Name
+
+</h6>
+
+<h4>
+
+{{student.full_name}}
+
+</h4>
+
+</div>
+
+
+<div class="col-md-4">
+
+<h6>
+
+Total Subjects
+
+</h6>
+
+
+<h4>
+
+{{results|length}}
+
+</h4>
+
+
+</div>
+
+<style>
+    .total-box small{
+    display:block;
+    margin-top:4px;
+    font-size:11px;
+    color:#6c757d;
+}
+</style>
+<div class="row mt-4 mb-4">
+
+    <div class="col-md-3 mb-3">
+        <div class="total-box">
+            <h6>Total Score</h6>
+            <h2>{{ grand_total }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="total-box">
+            <h6>Average</h6>
+            <h2>{{ average }}%</h2>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="total-box">
+            <h6>Grade</h6>
+            <h2>{{ grade }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="total-box">
+            <h6>Class Position</h6>
+            <h2>#{{ class_position }}</h2>
+            <small style="font-size:11px; color:#6c757d;">
+                of {{ total_class_students }} students
+            </small>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="total-box">
+            <h6>School Position</h6>
+            <h2>#{{ school_position }}</h2>
+            <small style="font-size:11px; color:#6c757d;">
+                of {{ total_school_students }} students
+            </small>
+        </div>
+    </div>
+
+</div>
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+<h3 class="mt-4 mb-3">
+
+<i class="bi bi-book"></i>
+
+My Subjects
+
+</h3>
+
+
+
+
+
+{% for r in results %}
+
+
+
+<div class="subject-card">
+
+
+
+<div class="subject-title mb-3">
+
+
+<i class="bi bi-book-fill"></i>
+
+{{r.subject}}
+
+
+
+</div>
+
+
+
+
+
+<div class="row g-2">
+
+
+
+{% for e in r.exams %}
+
+
+
+<div class="col-6 col-md-3">
+
+
+<div class="exam-box">
+
+
+<div class="exam-title">
+
+
+{% if e.type=="monthly_1" %}
+
+Monthly One
+
+{% elif e.type=="monthly_2" %}
+
+Monthly Two
+
+{% elif e.type=="midterm" %}
+
+Mid Term
+
+{% elif e.type=="final" %}
+
+Final
+
+{% else %}
+
+{{e.type}}
+
+{% endif %}
+
+
+
+</div>
+
+
+
+<div class="exam-score">
+
+
+{{e.score}}
+
+</div>
+
+
+
+</div>
+
+
+</div>
+
+
+
+{% endfor %}
+
+
+
+</div>
+
+
+
+
+<div class="total-box mt-3">
+
+
+Total Score:
+
+{{r.total}}
+
+
+
+</div>
+
+
+
+</div>
+
+
+
+{% endfor %}
+
+
+
+
+
+</div>
+
+
+
+
+
+</body>
+
+</html>

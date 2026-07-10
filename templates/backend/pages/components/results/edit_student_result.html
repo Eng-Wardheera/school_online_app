@@ -1,0 +1,226 @@
+{% extends 'backend/home/base.html' %}
+
+{% block title %}Edit Student Result | School Management System{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+
+    <div class="page-header-left d-flex align-items-center">
+
+        <div class="page-header-title">
+            <h5 class="m-b-10">Student Results</h5>
+        </div>
+
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.dashboard') }}">Home</a>
+            </li>
+
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.all_student_results') }}">
+                    Student Results
+                </a>
+            </li>
+
+            <li class="breadcrumb-item">
+                Edit Result
+            </li>
+
+        </ul>
+
+    </div>
+
+</div>
+
+<div class="main-content">
+
+    <div class="row justify-content-center">
+
+        <div class="col-lg-8">
+
+            <div class="card">
+
+                <div class="card-header">
+
+                    <h5 class="card-title mb-0">
+
+                        <i class="feather-edit me-2"></i>
+
+                        Edit Student Result
+
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    <form method="POST">
+
+                        <!-- Student -->
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+
+                                Student
+
+                            </label>
+
+                            <input
+                                type="text"
+                                class="form-control"
+                                value="{{ student.full_name }}"
+                                readonly>
+
+                        </div>
+
+                        <!-- Subject -->
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+
+                                Subject
+
+                            </label>
+
+                            <select
+                                name="subject_id"
+                                class="form-select"
+                                required>
+
+                                {% for subject in subjects %}
+
+                                <option
+                                    value="{{ subject._id }}"
+
+                                    {% if result.subject_id == subject._id|string %}
+                                    selected
+                                    {% endif %}>
+
+                                    {{ subject.subject_name }}
+
+                                </option>
+
+                                {% endfor %}
+
+                            </select>
+
+                        </div>
+
+                        <!-- Exam Type -->
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+
+                                Exam Type
+
+                            </label>
+
+                            <select
+                                name="exam_type"
+                                class="form-select"
+                                required>
+
+                                <option value="monthly_1"
+                                {% if result.exam_type=="monthly_1" %}selected{% endif %}>
+                                    Monthly 1
+                                </option>
+
+                                <option value="midterm"
+                                {% if result.exam_type=="midterm" %}selected{% endif %}>
+                                    Mid-Term
+                                </option>
+
+                                <option value="monthly_2"
+                                {% if result.exam_type=="monthly_2" %}selected{% endif %}>
+                                    Monthly 2
+                                </option>
+
+                                <option value="final"
+                                {% if result.exam_type=="final" %}selected{% endif %}>
+                                    Final
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                        <!-- Score -->
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+
+                                Score
+
+                            </label>
+
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                name="score"
+                                value="{{ result.score }}"
+                                class="form-control"
+                                required>
+
+                        </div>
+
+                        <!-- Exam Date -->
+
+                        <div class="mb-4">
+
+                            <label class="form-label">
+
+                                Exam Date
+
+                            </label>
+
+                            <input
+                                type="date"
+                                name="exam_date"
+                                value="{{ result.exam_date }}"
+                                class="form-control">
+
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-end gap-2">
+
+                            <a href="{{ url_for('main.all_student_results') }}"
+                               class="btn btn-light">
+
+                                Cancel
+
+                            </a>
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary">
+
+                                <i class="feather-save me-1"></i>
+
+                                Update Result
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

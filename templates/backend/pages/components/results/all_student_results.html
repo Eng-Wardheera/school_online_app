@@ -1,0 +1,367 @@
+{% extends 'backend/home/base.html' %}
+
+{% block title %}All Student Results | School Management System{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+
+    <div class="page-header-left d-flex align-items-center">
+
+        <div class="page-header-title">
+            <h5 class="m-b-10">Student Results Management</h5>
+        </div>
+
+        <ul class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.dashboard') }}">Home</a>
+            </li>
+            <li class="breadcrumb-item">All Student Results</li>
+        </ul>
+
+    </div>
+
+    <div class="page-header-right ms-auto">
+
+        <a href=""
+           class="btn btn-primary">
+
+            <i class="feather-plus me-1"></i>
+            Add Result
+
+        </a>
+
+    </div>
+
+</div>
+
+<div class="main-content">
+
+    <div class="card">
+
+        <div class="card-header d-flex justify-content-between align-items-center">
+
+            <h5 class="card-title mb-0">
+                Student Results
+            </h5>
+
+            <div class="d-flex gap-2">
+
+                <form method="POST"
+                      action="{{ url_for('main.delete_all_student_results') }}"
+                      onsubmit="return confirm('Delete ALL Results?');">
+
+                    <button class="btn btn-danger btn-sm">
+                        Delete All
+                    </button>
+
+                </form>
+
+                <a href="{{ url_for('main.export_student_results') }}"
+                   class="btn btn-success btn-sm">
+
+                    Export CSV
+
+                </a>
+
+                <form method="POST"
+                      enctype="multipart/form-data"
+                      action="{{ url_for('main.import_student_results') }}"
+                      class="d-flex gap-2">
+
+                    <input
+                        type="file"
+                        name="file"
+                        accept=".csv"
+                        class="form-control form-control-sm"
+                        required>
+
+                    <button class="btn btn-primary btn-sm">
+                        Import
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+        <div class="card-body p-0">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover" id="leadList">
+
+                    <thead>
+
+                    <tr>
+
+                        <th>#</th>
+
+                        <th>Student ID</th>
+
+                        <th>Student</th>
+
+                        <th>Class</th>
+
+                        <th>Section</th>
+
+                        <th>Subject</th>
+
+                        <th>Teacher</th>
+
+                        <th>Exam</th>
+
+                        <th>Score</th>
+
+                        <th>Exam Date</th>
+
+                        <th>Created</th>
+
+                        <th class="text-end">
+                            Actions
+                        </th>
+
+                    </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                    {% if results %}
+
+                        {% for r in results %}
+
+                        <tr>
+
+                            <td>{{ loop.index }}</td>
+
+                            <td>
+
+                                <span class="badge bg-dark">
+
+                                    {{ r.role_no }}
+
+                                </span>
+
+                            </td>
+
+                            <td class="fw-bold">
+
+                                {{ r.student_name }}
+
+                            </td>
+
+                            <td>
+
+                                <span class="badge bg-primary">
+
+                                    {{ r.class_name }}
+
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                <span class="badge bg-info">
+
+                                    {{ r.section_name }}
+
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                <span class="badge bg-secondary">
+
+                                    {{ r.subject_name }}
+
+                                </span>
+
+                            </td>
+
+                            <td>
+
+    {% if r.teacher_name %}
+
+        <span class="badge bg-success">
+
+            {{ r.teacher_name }}
+
+        </span>
+
+    {% else %}
+
+        <span class="badge bg-secondary">
+
+            N/A
+
+        </span>
+
+    {% endif %}
+
+</td>
+
+                            <td>
+
+                                {% if r.exam_type=="monthly_1" %}
+
+                                    <span class="badge bg-primary">
+                                        Monthly 1
+                                    </span>
+
+                                {% elif r.exam_type=="midterm" %}
+
+                                    <span class="badge bg-warning text-dark">
+                                        Mid-Term
+                                    </span>
+
+                                {% elif r.exam_type=="monthly_2" %}
+
+                                    <span class="badge bg-info">
+                                        Monthly 2
+                                    </span>
+
+                                {% elif r.exam_type=="final" %}
+
+                                    <span class="badge bg-success">
+                                        Final
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-secondary">
+
+                                        {{ r.exam_type }}
+
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                {% if r.score >=90 %}
+
+                                    <span class="badge bg-success">
+
+                                        {{ r.score }}
+
+                                    </span>
+
+                                {% elif r.score >=75 %}
+
+                                    <span class="badge bg-primary">
+
+                                        {{ r.score }}
+
+                                    </span>
+
+                                {% elif r.score >=50 %}
+
+                                    <span class="badge bg-warning text-dark">
+
+                                        {{ r.score }}
+
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-danger">
+
+                                        {{ r.score }}
+
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                {{ r.exam_date }}
+
+                            </td>
+
+                            <td>
+
+                                {{ r.created_at.strftime('%Y-%m-%d') if r.created_at else 'N/A' }}
+
+                            </td>
+
+                            <td class="text-end">
+
+                                <div class="hstack gap-1 justify-content-end">
+
+                                    <a href="#"
+                                       class="avatar-text avatar-md bg-soft-info text-info rounded-circle">
+
+                                        <i class="feather-eye"></i>
+
+                                    </a>
+
+                                    <a href="{{ url_for('main.edit_student_result', result_id=r.id) }}"
+                                       class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle">
+
+                                        <i class="feather-edit"></i>
+
+                                    </a>
+
+                                    <form method="POST"
+                                          action="{{ url_for('main.delete_student_result', result_id=r.id) }}"
+                                          class="d-inline">
+
+                                        <button
+                                            class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
+                                            onclick="return confirm('Delete this result?')">
+
+                                            <i class="feather-trash-2"></i>
+
+                                        </button>
+
+                                    </form>
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                    <tr>
+
+                        <td colspan="12" class="text-center p-5">
+
+                            <i class="feather-award fs-40 text-muted d-block mb-3"></i>
+
+                            <span class="text-muted">
+
+                                No Student Results Found.
+
+                            </span>
+
+                        </td>
+
+                    </tr>
+
+                    {% endif %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
