@@ -2098,7 +2098,43 @@ def add_result_deadline_single(assignment_id):
 
 
 
-    result = mongo.db.teacher_assignments.update_one(
+    # Hel assignment-ka
+    assignment = mongo.db.teacher_assignments.find_one(
+        {
+            "_id": ObjectId(assignment_id)
+        }
+    )
+
+
+    if not assignment:
+        flash("Assignment not found!", "danger")
+        return redirect(request.referrer)
+
+
+
+    # Hubi class-kan inuu hore deadline leeyahay
+    existing_deadline = mongo.db.teacher_assignments.find_one(
+        {
+            "class": assignment["class"],
+            "start_time": {"$exists": True},
+            "end_time": {"$exists": True}
+        }
+    )
+
+
+    if existing_deadline:
+
+        flash(
+            f"Class {assignment['class']} already has a deadline. Remove the old deadline first.",
+            "warning"
+        )
+
+        return redirect(request.referrer)
+
+
+
+    # Haddii uusan jirin deadline hore, assign garee
+    mongo.db.teacher_assignments.update_one(
         {
             "_id": ObjectId(assignment_id)
         },
@@ -2112,17 +2148,9 @@ def add_result_deadline_single(assignment_id):
     )
 
 
-    if result.modified_count:
-
-        flash("Deadline assigned successfully!", "success")
-
-    else:
-
-        flash("Assignment not found!", "danger")
-
+    flash("Deadline assigned successfully!", "success")
 
     return redirect(request.referrer)
-
 
 @bp.route('/remove-result-deadline', methods=['POST'])
 @login_required
