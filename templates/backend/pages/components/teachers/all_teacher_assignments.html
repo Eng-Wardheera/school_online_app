@@ -165,6 +165,23 @@
 
                 </button>
 
+                <!-- REMOVE DEADLINE -->
+<form action="{{ url_for('main.remove_result_deadline_single', assignment_id=a.id) }}"
+      method="POST"
+      class="d-inline">
+
+    <button type="submit"
+            class="avatar-text avatar-md bg-soft-warning text-warning rounded-circle border-0"
+            data-bs-toggle="tooltip"
+            title="Remove Deadline"
+            onclick="return confirm('Ma hubtaa inaad ka saareyso deadline-kan?');">
+
+        <i class="feather-clock"></i>
+
+    </button>
+
+</form>
+
 
 
                 <!-- EDIT -->

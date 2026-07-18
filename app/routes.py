@@ -2225,6 +2225,43 @@ def remove_result_deadline():
     return redirect(request.referrer or url_for('main.index'))
 
 
+@bp.route('/remove-result-deadline/<assignment_id>', methods=['POST'])
+@login_required
+def remove_result_deadline_single(assignment_id):
+
+    result = mongo.db.teacher_assignments.update_one(
+        {
+            "_id": ObjectId(assignment_id)
+        },
+        {
+            "$unset": {
+                "start_time": "",
+                "end_time": ""
+            },
+            "$set": {
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+
+    if result.modified_count:
+
+        flash(
+            "Deadline removed successfully!",
+            "success"
+        )
+
+    else:
+
+        flash(
+            "Deadline not found!",
+            "warning"
+        )
+
+
+    return redirect(request.referrer)
+
 
 @bp.route('/remove-result-deadline/<teacher_id>', methods=['POST'])
 @login_required
