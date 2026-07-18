@@ -2084,6 +2084,7 @@ def add_result_deadline_single(assignment_id):
 
 
     try:
+
         start_time = datetime.strptime(
             start_time_str,
             "%Y-%m-%dT%H:%M"
@@ -2094,22 +2095,27 @@ def add_result_deadline_single(assignment_id):
             "%Y-%m-%dT%H:%M"
         )
 
+
     except ValueError:
+
         flash("Invalid datetime format", "danger")
         return redirect(request.referrer)
 
 
 
     if end_time <= start_time:
+
         flash(
             "End time must be after start time",
             "danger"
         )
+
         return redirect(request.referrer)
 
 
 
-    # Hel assignment-ka
+
+    # GET ASSIGNMENT
     assignment = mongo.db.teacher_assignments.find_one(
         {
             "_id": ObjectId(assignment_id)
@@ -2128,14 +2134,14 @@ def add_result_deadline_single(assignment_id):
 
 
 
-    # class-ka hel si ammaan ah
-    assignment_class = assignment.get("class")
+    # GET CLASS ID
+    class_id = assignment.get("class_id")
 
 
-    if not assignment_class:
+    if not class_id:
 
         flash(
-            "Class information missing!",
+            "Class ID missing!",
             "danger"
         )
 
@@ -2143,11 +2149,10 @@ def add_result_deadline_single(assignment_id):
 
 
 
-    # Haddii class-kan deadline hore leeyahay,
-    # delete hore kadibna ku beddel cusub
+    # REMOVE OLD DEADLINE FOR SAME CLASS
     mongo.db.teacher_assignments.update_many(
         {
-            "class": assignment_class
+            "class_id": class_id
         },
         {
             "$unset": {
@@ -2159,16 +2164,20 @@ def add_result_deadline_single(assignment_id):
 
 
 
-    # Ku shub deadline cusub class-kaas
+    # ADD NEW DEADLINE FOR SAME CLASS
     result = mongo.db.teacher_assignments.update_many(
         {
-            "class": assignment_class
+            "class_id": class_id
         },
         {
             "$set": {
+
                 "start_time": start_time,
+
                 "end_time": end_time,
+
                 "updated_at": datetime.utcnow()
+
             }
         }
     )
@@ -2178,7 +2187,7 @@ def add_result_deadline_single(assignment_id):
     if result.modified_count:
 
         flash(
-            f"Deadline updated successfully for Class {assignment_class}!",
+            "Deadline updated successfully for this class!",
             "success"
         )
 
