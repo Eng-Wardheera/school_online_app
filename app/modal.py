@@ -6,6 +6,7 @@ from app import now_eat
 
 
 
+
 # 1. Qeexidda Enum-ka
 # 1. Enum-ka Doorka (Role Definition)
 class UserRole(enum.Enum):

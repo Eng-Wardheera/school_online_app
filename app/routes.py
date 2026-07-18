@@ -871,7 +871,7 @@ def register():
 
         # 3. Role Logic
         user_count = mongo.db.users.count_documents({})
-        role = UserRole.superadmin.value if user_count == 0 else UserRole.user.value
+        role = UserRole.SUPERADMIN.value if user_count == 0 else UserRole.USER.value
 
         # 4. Save
         new_user = {
@@ -2020,27 +2020,35 @@ def delete_assignment(assignment_id):
 
 
 
+
+# ALL TEACHERS DEADLINE
 @bp.route('/add-result-deadline', methods=['POST'])
 @login_required
-def add_result_deadline():
+def add_result_deadline_all():
 
     start_time_str = request.form.get("start_time")
     end_time_str = request.form.get("end_time")
+
 
     if not start_time_str or not end_time_str:
         flash("Start and End time required", "danger")
         return redirect(request.referrer)
 
+
     try:
         start_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M")
         end_time = datetime.strptime(end_time_str, "%Y-%m-%dT%H:%M")
+
     except ValueError:
         flash("Invalid datetime format", "danger")
         return redirect(request.referrer)
 
+
     if end_time <= start_time:
         flash("End time must be after start time", "danger")
         return redirect(request.referrer)
+
+
 
     mongo.db.teacher_assignments.update_many(
         {},
@@ -2053,7 +2061,66 @@ def add_result_deadline():
         }
     )
 
-    flash("Deadline assigned successfully!", "success")
+
+    flash("Deadline assigned to all teachers successfully!", "success")
+
+    return redirect(request.referrer)
+
+
+
+
+# SINGLE ASSIGNMENT DEADLINE
+@bp.route('/add-result-deadline/<assignment_id>', methods=['POST'])
+@login_required
+def add_result_deadline_single(assignment_id):
+
+    start_time_str = request.form.get("start_time")
+    end_time_str = request.form.get("end_time")
+
+
+    if not start_time_str or not end_time_str:
+        flash("Start and End time required", "danger")
+        return redirect(request.referrer)
+
+
+    try:
+        start_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M")
+        end_time = datetime.strptime(end_time_str, "%Y-%m-%dT%H:%M")
+
+    except ValueError:
+        flash("Invalid datetime format", "danger")
+        return redirect(request.referrer)
+
+
+    if end_time <= start_time:
+        flash("End time must be after start time", "danger")
+        return redirect(request.referrer)
+
+
+
+    result = mongo.db.teacher_assignments.update_one(
+        {
+            "_id": ObjectId(assignment_id)
+        },
+        {
+            "$set": {
+                "start_time": start_time,
+                "end_time": end_time,
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+
+    if result.modified_count:
+
+        flash("Deadline assigned successfully!", "success")
+
+    else:
+
+        flash("Assignment not found!", "danger")
+
+
     return redirect(request.referrer)
 
 
@@ -4328,6 +4395,7 @@ def export_class_results(
     )
 
 
+
 @bp.route('/admin/results-report')
 @login_required
 def admin_results_report():
@@ -4335,10 +4403,15 @@ def admin_results_report():
     if current_user.role not in ['admin', 'superadmin']:
         return abort(403)
 
-    classes = list(mongo.db.classrooms.find().sort("class_name", 1))
 
-    class_id = request.args.get("class_id")
-    section_id = request.args.get("section_id")
+    classes = list(
+        mongo.db.classrooms.find().sort("class_name", 1)
+    )
+
+
+    class_id = request.args.get("class_id", "").strip()
+    section_id = request.args.get("section_id", "").strip()
+
 
     report = []
     subjects = []
@@ -4347,54 +4420,125 @@ def admin_results_report():
     selected_class = None
     selected_section = None
 
+
+
     # =========================
     # CLASS SELECTED
     # =========================
     if class_id:
 
+
         try:
             class_obj = ObjectId(class_id)
-        except:
+
+        except Exception:
             return abort(404)
 
-        selected_class = mongo.db.classrooms.find_one({"_id": class_obj})
+
+
+        selected_class = mongo.db.classrooms.find_one({
+            "_id": class_obj
+        })
+
+
+        if not selected_class:
+            return abort(404)
+
+
 
         # =========================
-        # LOAD SECTIONS FOR CLASS
+        # GET SECTIONS FROM STUDENTS
         # =========================
-        sections = list(mongo.db.sections.find({
+
+        section_ids = mongo.db.students.distinct(
+            "section_id",
+            {
+                "class_id": class_obj,
+                "section_id": {
+                    "$exists": True,
+                    "$ne": None
+                }
+            }
+        )
+
+
+        if section_ids:
+
+            sections = list(
+                mongo.db.sections.find({
+                    "_id": {
+                        "$in": section_ids
+                    }
+                }).sort(
+                    "section_name",
+                    1
+                )
+            )
+
+
+
+        # =========================
+        # STUDENTS FILTER
+        # =========================
+
+        student_query = {
             "class_id": class_obj
-        }))
+        }
 
-        # =========================
-        # BUILD STUDENT QUERY
-        # =========================
-        student_query = {"class_id": class_obj}
 
         section_obj = None
 
+
+
         if section_id:
+
+
             try:
+
                 section_obj = ObjectId(section_id)
-                student_query["section_id"] = section_obj
+
 
                 selected_section = mongo.db.sections.find_one({
                     "_id": section_obj
                 })
-            except:
+
+
+                if selected_section:
+
+                    student_query["section_id"] = section_obj
+
+
+
+            except Exception:
+
                 section_obj = None
 
-        students = list(mongo.db.students.find(student_query))
+
+
+
+        students = list(
+            mongo.db.students.find(
+                student_query
+            ).sort(
+                "role_no",
+                1
+            )
+        )
+
+
 
         # =========================
-        # GET ASSIGNMENTS
+        # GET SUBJECTS
+        # CLASS BASED ONLY
         # =========================
-        assignments_query = {"class_id": class_obj}
 
-        if section_obj:
-            assignments_query["section_id"] = section_obj
+        assignments = list(
+            mongo.db.teacher_assignments.find({
+                "class_id": class_obj
+            })
+        )
 
-        assignments = list(mongo.db.teacher_assignments.find(assignments_query))
+
 
         subject_ids = list(set(
             a.get("subject_id")
@@ -4402,137 +4546,264 @@ def admin_results_report():
             if a.get("subject_id")
         ))
 
-        subjects = list(mongo.db.subjects.find({
-            "_id": {"$in": subject_ids}
-        }))
 
-        subjects.sort(key=lambda x: x.get("subject_name", ""))
+
+        if subject_ids:
+
+
+            subjects = list(
+                mongo.db.subjects.find({
+                    "_id": {
+                        "$in": subject_ids
+                    }
+                })
+            )
+
+
+            subjects.sort(
+                key=lambda x:
+                x.get(
+                    "subject_name",
+                    ""
+                ).lower()
+            )
+
+
+
 
         # =========================
         # BUILD REPORT
         # =========================
+
         for student in students:
 
+
             row = {
+
                 "student_id": str(student["_id"]),
-                "role_no": student.get("role_no"),
-                "full_name": student.get("full_name"),
+
+                "role_no": student.get(
+                    "role_no",
+                    ""
+                ),
+
+                "full_name": student.get(
+                    "full_name",
+                    ""
+                ),
+
                 "scores": []
+
             }
+
+
 
             for subject in subjects:
 
+
                 result = mongo.db.results.find_one({
+
                     "student_id": student["_id"],
+
                     "subject_id": subject["_id"]
+
                 })
 
+
                 row["scores"].append(
-                    result.get("score", "") if result else ""
+
+                    result.get(
+                        "score",
+                        ""
+                    )
+
+                    if result
+
+                    else ""
+
                 )
+
+
 
             report.append(row)
 
-    # =========================
-    # RENDER
-    # =========================
+
+
     return render_template(
+
         "backend/pages/components/results/admin_results_report.html",
 
         classes=classes,
+
         sections=sections,
+
         subjects=subjects,
+
         report=report,
 
         selected_class=selected_class,
-        selected_section=selected_section
-    )
 
+        selected_section=selected_section
+
+    )
 
 
 @bp.route('/export-results-report')
 @login_required
 def export_results_report():
 
-
     if current_user.role not in ['admin', 'superadmin']:
         return abort(403)
 
-    class_id = request.args.get("class_id")
-    section_id = request.args.get("section_id")
+
+    class_id = request.args.get("class_id", "").strip()
+    section_id = request.args.get("section_id", "").strip()
+
 
     if not class_id:
         return abort(404)
 
+
     try:
         class_obj = ObjectId(class_id)
-        section_obj = ObjectId(section_id) if section_id else None
-    except:
+
+    except Exception:
         return abort(404)
+
+
+
+    section_obj = None
+
+
+    if section_id:
+
+        try:
+            section_obj = ObjectId(section_id)
+
+        except Exception:
+            section_obj = None
+
+
 
     classroom = mongo.db.classrooms.find_one({
         "_id": class_obj
     })
 
+
+    if not classroom:
+        return abort(404)
+
+
+
     section = None
 
+
     if section_obj:
+
         section = mongo.db.sections.find_one({
             "_id": section_obj
         })
 
+
+
     # =========================
     # STUDENTS
+    # CLASS + OPTIONAL SECTION
     # =========================
 
-    query = {
+    student_query = {
+
         "class_id": class_obj
+
     }
 
+
     if section_obj:
-        query["section_id"] = section_obj
+
+        student_query["section_id"] = section_obj
+
+
 
     students = list(
-        mongo.db.students.find(query)
+
+        mongo.db.students.find(
+            student_query
+        ).sort(
+            "role_no",
+            1
+        )
+
     )
+
+
 
     # =========================
     # SUBJECTS
+    # CLASS BASED ONLY
     # =========================
 
-    assignment_query = {
-        "class_id": class_obj
-    }
-
-    if section_obj:
-        assignment_query["section_id"] = section_obj
-
     assignments = list(
-        mongo.db.teacher_assignments.find(
-            assignment_query
-        )
+
+        mongo.db.teacher_assignments.find({
+
+            "class_id": class_obj
+
+        })
+
     )
+
+
 
     subject_ids = []
 
+
     for assignment in assignments:
 
-        subject_id = assignment.get("subject_id")
 
-        if subject_id and subject_id not in subject_ids:
-            subject_ids.append(subject_id)
+        sid = assignment.get(
+            "subject_id"
+        )
 
-    subjects = list(
-        mongo.db.subjects.find({
-            "_id": {
-                "$in": subject_ids
-            }
-        })
-    )
 
-    subjects.sort(
-        key=lambda x: x.get("subject_name", "")
-    )
+        if sid and sid not in subject_ids:
+
+            subject_ids.append(sid)
+
+
+
+
+    subjects = []
+
+
+    if subject_ids:
+
+        subjects = list(
+
+            mongo.db.subjects.find({
+
+                "_id": {
+
+                    "$in": subject_ids
+
+                }
+
+            })
+
+        )
+
+
+
+        subjects.sort(
+
+            key=lambda x:
+            x.get(
+                "subject_name",
+                ""
+            ).lower()
+
+        )
+
+
 
     # =========================
     # CSV GENERATOR
@@ -4540,58 +4811,100 @@ def export_results_report():
 
     def generate():
 
+
         headers = [
+
             "Role No",
+
             "Student Name"
+
         ]
 
+
+
         for subject in subjects:
+
             headers.append(
-                subject.get("subject_name")
+
+                subject.get(
+                    "subject_name",
+                    ""
+                )
+
             )
+
+
 
         yield ",".join(headers) + "\n"
 
+
+
+
         for student in students:
+
 
             row = [
 
-                str(student.get("role_no", "")),
+                str(
+                    student.get(
+                        "role_no",
+                        ""
+                    )
+                ),
 
                 '"' + str(
+
                     student.get(
                         "full_name",
                         ""
                     )
+
                 ) + '"'
 
             ]
 
+
+
             for subject in subjects:
+
 
                 result = mongo.db.results.find_one({
 
                     "student_id":
                     student["_id"],
 
+
                     "subject_id":
                     subject["_id"]
 
                 })
 
+
+
                 score = ""
 
+
                 if result:
+
                     score = str(
+
                         result.get(
                             "score",
                             ""
                         )
+
                     )
+
+
 
                 row.append(score)
 
+
+
             yield ",".join(row) + "\n"
+
+
+
 
     # =========================
     # FILE NAME
@@ -4602,12 +4915,18 @@ def export_results_report():
         "Results"
     )
 
+
     if section:
+
         filename += "_" + section.get(
-            "section_name"
+            "section_name",
+            ""
         )
 
+
     filename += "_Report.csv"
+
+
 
     return Response(
 
@@ -4618,6 +4937,7 @@ def export_results_report():
         headers={
 
             "Content-Disposition":
+
             f"attachment; filename={filename}"
 
         }

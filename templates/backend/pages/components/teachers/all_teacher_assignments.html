@@ -90,114 +90,145 @@
 
                     </thead>
 
-                    <tbody>
+                  <tbody>
 
-                        {% if assignments %}
+{% if assignments %}
 
-                            {% for a in assignments %}
+    {% for a in assignments %}
 
-                            <tr>
+    <tr>
 
-                                <td>
-                                    {{ loop.index }}
-                                </td>
+        <td>
+            {{ loop.index }}
+        </td>
 
-                                <td>
-                                    <span class="fw-bold">
-                                        {{ a.teacher }}
-                                    </span>
-                                </td>
 
-                                <td>
-                                    <span class="badge bg-primary">
-                                        {{ a.class }}
-                                    </span>
-                                </td>
+        <td>
+            <span class="fw-bold">
+                {{ a.teacher }}
+            </span>
+        </td>
 
-                                <td>
 
-                                    {% if a.section %}
+        <td>
+            <span class="badge bg-primary">
+                {{ a.class }}
+            </span>
+        </td>
 
-                                        <span class="badge bg-info">
-                                            {{ a.section }}
-                                        </span>
 
-                                    {% else %}
+        <td>
 
-                                        <span class="badge bg-secondary">
-                                            No Section
-                                        </span>
+            {% if a.section %}
 
-                                    {% endif %}
+                <span class="badge bg-info">
+                    {{ a.section }}
+                </span>
 
-                                </td>
+            {% else %}
 
-                                <td>
-                                    <span class="badge bg-success">
-                                        {{ a.subject }}
-                                    </span>
-                                </td>
+                <span class="badge bg-secondary">
+                    No Section
+                </span>
 
-                                <td>
-                                    {{ a.created_at.strftime('%Y-%m-%d') if a.created_at else 'N/A' }}
-                                </td>
+            {% endif %}
 
-                                <td class="text-end">
+        </td>
 
-                                    <div class="hstack gap-1 justify-content-end">
 
-                                        <!-- EDIT -->
-                                        <a href="{{ url_for('main.edit_assignment', assignment_id=a.id) }}"
-                                           class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle"
-                                           data-bs-toggle="tooltip"
-                                           title="Edit">
+        <td>
+            <span class="badge bg-success">
+                {{ a.subject }}
+            </span>
+        </td>
 
-                                            <i class="feather-edit"></i>
 
-                                        </a>
+        <td>
+            {{ a.created_at.strftime('%Y-%m-%d') if a.created_at else 'N/A' }}
+        </td>
 
-                                        <!-- DELETE -->
-                                        <form action="{{ url_for('main.delete_assignment', assignment_id=a.id) }}"
-                                              method="POST"
-                                              class="d-inline">
 
-                                            <button type="submit"
-                                                    class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
-                                                    onclick="return confirm('Ma hubtaa inaad tirtirayso assignment-kan?');">
+        <td class="text-end">
 
-                                                <i class="feather-trash-2"></i>
+            <div class="hstack gap-2 justify-content-end">
 
-                                            </button>
 
-                                        </form>
+                <!-- ASSIGN SINGLE DEADLINE -->
+                <button
+                    type="button"
+                    class="avatar-text avatar-md bg-soft-warning text-warning rounded-circle border-0"
+                    data-bs-toggle="tooltip"
+                    title="Assign Deadline"
+                    onclick="confirmSingleDeadline('{{ a.id }}')">
 
-                                    </div>
+                    <i class="feather-clock"></i>
 
-                                </td>
+                </button>
 
-                            </tr>
 
-                            {% endfor %}
 
-                        {% else %}
+                <!-- EDIT -->
+                <a href="{{ url_for('main.edit_assignment', assignment_id=a.id) }}"
+                   class="avatar-text avatar-md bg-soft-primary text-primary rounded-circle"
+                   data-bs-toggle="tooltip"
+                   title="Edit">
 
-                        <tr>
+                    <i class="feather-edit"></i>
 
-                            <td colspan="7" class="text-center p-5">
+                </a>
 
-                                <i class="feather-user-check fs-40 text-muted d-block mb-3"></i>
 
-                                <span class="text-muted">
-                                    No teacher assignments found.
-                                </span>
 
-                            </td>
+                <!-- DELETE -->
+                <form action="{{ url_for('main.delete_assignment', assignment_id=a.id) }}"
+                      method="POST"
+                      class="d-inline">
 
-                        </tr>
+                    <button type="submit"
+                            class="avatar-text avatar-md bg-soft-danger text-danger rounded-circle border-0"
+                            data-bs-toggle="tooltip"
+                            title="Delete"
+                            onclick="return confirm('Ma hubtaa inaad tirtirayso assignment-kan?');">
 
-                        {% endif %}
+                        <i class="feather-trash-2"></i>
 
-                    </tbody>
+                    </button>
+
+                </form>
+
+
+            </div>
+
+        </td>
+
+
+    </tr>
+
+
+    {% endfor %}
+
+
+{% else %}
+
+
+<tr>
+
+    <td colspan="7" class="text-center p-5">
+
+        <i class="feather-user-check fs-40 text-muted d-block mb-3"></i>
+
+        <span class="text-muted">
+            No teacher assignments found.
+        </span>
+
+    </td>
+
+</tr>
+
+
+{% endif %}
+
+</tbody>
 
                 </table>
 
@@ -213,54 +244,101 @@
 <!-- OVERLAY -->
 <div id="deadlineOverlay" class="modal-overlay hidden"></div>
 
+
 <!-- MODAL -->
 <div id="deadlineModal" class="custom-modal hidden">
 
     <div class="modal-box">
 
+
         <div class="modal-header">
-            <h5>Assign Deadline (All Teachers)</h5>
-            <button class="close-btn" onclick="closeDeadlineModal()">×</button>
+
+            <h5 id="deadlineTitle">
+                Assign Deadline
+            </h5>
+
+
+            <button 
+                type="button"
+                class="close-btn"
+                onclick="closeDeadlineModal()">
+                ×
+            </button>
+
         </div>
 
-        <form method="POST" action="{{ url_for('main.add_result_deadline') }}">
+
+
+        <form id="deadlineForm"
+              method="POST"
+              action="{{ url_for('main.add_result_deadline_all') }}">
+
 
             <div class="modal-body">
-            <label>Start Time</label>
-            <input
-                type="datetime-local"
-                name="start_time"
-                value="{% if start_time %}{{ start_time.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"
-                class="form-control"
-                required
-            >
 
-            <label>End Time</label>
-            <input
-                type="datetime-local"
-                name="end_time"
-                value="{% if end_time %}{{ end_time.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"
-                class="form-control"
-                required
-            >
+
+                <label>
+                    Start Time
+                </label>
+
+                <input
+                    type="datetime-local"
+                    name="start_time"
+                    class="form-control"
+                    required
+                >
+
+
+
+                <label>
+                    End Time
+                </label>
+
+                <input
+                    type="datetime-local"
+                    name="end_time"
+                    class="form-control"
+                    required
+                >
+
 
             </div>
+
+
 
             <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeDeadlineModal()">
+
+
+                <button 
+                    type="button"
+                    class="btn-cancel"
+                    onclick="closeDeadlineModal()">
+
                     Cancel
+
                 </button>
 
-                <button type="submit" class="btn-save">
+
+
+                <button 
+                    type="submit"
+                    class="btn-save">
+
                     Save Deadline
+
                 </button>
+
+
             </div>
 
+
         </form>
+
 
     </div>
 
 </div>
+
 
 <style>
     /* overlay */
@@ -360,22 +438,96 @@
 </style>
 
 <script>
-function openDeadlineModal() {
-    document.getElementById("deadlineModal").classList.remove("hidden");
-    document.getElementById("deadlineOverlay").classList.remove("hidden");
+    function openDeadlineModal(){
+
+    document
+    .getElementById("deadlineModal")
+    .classList.remove("hidden");
+
+
+    document
+    .getElementById("deadlineOverlay")
+    .classList.remove("hidden");
+
 }
 
-function closeDeadlineModal() {
-    document.getElementById("deadlineModal").classList.add("hidden");
-    document.getElementById("deadlineOverlay").classList.add("hidden");
+
+
+function confirmAllDeadline(){
+
+    if(confirm("Ma hubtaa inaad deadline u sameyneyso dhammaan teachers?")){
+
+
+        let form = document.getElementById("deadlineForm");
+
+
+        form.action = "{{ url_for('main.add_result_deadline_all') }}";
+
+
+        document.getElementById("deadlineTitle").innerHTML =
+        "Assign Deadline (All Teachers)";
+
+
+        openDeadlineModal();
+
+    }
+
 }
 
-/* close when clicking outside modal */
-document.getElementById("deadlineOverlay").addEventListener("click", function () {
+
+
+
+function confirmSingleDeadline(id){
+
+
+    if(confirm("Ma hubtaa inaad deadline u sameyneyso assignment-kan?")){
+
+
+        let form = document.getElementById("deadlineForm");
+
+
+        form.action = "/add-result-deadline/" + id;
+
+
+        document.getElementById("deadlineTitle").innerHTML =
+        "Assign Deadline (Single Assignment)";
+
+
+        openDeadlineModal();
+
+    }
+
+}
+
+
+
+
+function closeDeadlineModal(){
+
+
+    document
+    .getElementById("deadlineModal")
+    .classList.add("hidden");
+
+
+    document
+    .getElementById("deadlineOverlay")
+    .classList.add("hidden");
+
+
+}
+
+
+
+
+document
+.getElementById("deadlineOverlay")
+.addEventListener("click", function(){
+
     closeDeadlineModal();
+
 });
 </script>
-
 
 
 {% endblock %}
