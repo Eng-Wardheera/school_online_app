@@ -2070,6 +2070,9 @@ def add_result_deadline_all():
 
 
 # SINGLE ASSIGNMENT DEADLINE
+# ======================================================
+# SINGLE CLASS / ASSIGNMENT DEADLINE
+# ======================================================
 @bp.route('/add-result-deadline/<assignment_id>', methods=['POST'])
 @login_required
 def add_result_deadline_single(assignment_id):
@@ -2077,129 +2080,58 @@ def add_result_deadline_single(assignment_id):
     start_time_str = request.form.get("start_time")
     end_time_str = request.form.get("end_time")
 
-
     if not start_time_str or not end_time_str:
-        flash("Start and End time required", "danger")
+        flash("Start and End time required.", "danger")
         return redirect(request.referrer)
-
 
     try:
-
-        start_time = datetime.strptime(
-            start_time_str,
-            "%Y-%m-%dT%H:%M"
-        )
-
-        end_time = datetime.strptime(
-            end_time_str,
-            "%Y-%m-%dT%H:%M"
-        )
-
-
+        start_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M")
+        end_time = datetime.strptime(end_time_str, "%Y-%m-%dT%H:%M")
     except ValueError:
-
-        flash("Invalid datetime format", "danger")
+        flash("Invalid datetime format.", "danger")
         return redirect(request.referrer)
-
-
 
     if end_time <= start_time:
-
-        flash(
-            "End time must be after start time",
-            "danger"
-        )
-
+        flash("End time must be after start time.", "danger")
         return redirect(request.referrer)
 
-
-
-
-    # GET ASSIGNMENT
+    # Hel assignment-ka
     assignment = mongo.db.teacher_assignments.find_one(
-        {
-            "_id": ObjectId(assignment_id)
-        }
+        {"_id": ObjectId(assignment_id)}
     )
-
 
     if not assignment:
-
-        flash(
-            "Assignment not found!",
-            "danger"
-        )
-
+        flash("Assignment not found.", "danger")
         return redirect(request.referrer)
 
-
-
-    # GET CLASS ID
     class_id = assignment.get("class_id")
 
-
     if not class_id:
-
-        flash(
-            "Class ID missing!",
-            "danger"
-        )
-
+        flash("Class ID not found.", "danger")
         return redirect(request.referrer)
 
-
-
-    # REMOVE OLD DEADLINE FOR SAME CLASS
-    mongo.db.teacher_assignments.update_many(
-        {
-            "class_id": class_id
-        },
-        {
-            "$unset": {
-                "start_time": "",
-                "end_time": ""
-            }
-        }
-    )
-
-
-
-    # ADD NEW DEADLINE FOR SAME CLASS
+    # Deadline cusub u dhig assignments-ka class-kan
     result = mongo.db.teacher_assignments.update_many(
         {
             "class_id": class_id
         },
         {
             "$set": {
-
                 "start_time": start_time,
-
                 "end_time": end_time,
-
                 "updated_at": datetime.utcnow()
-
             }
         }
     )
 
-
-
-    if result.modified_count:
-
-        flash(
-            "Deadline updated successfully for this class!",
-            "success"
-        )
-
-    else:
-
-        flash(
-            "Deadline update failed!",
-            "danger"
-        )
-
+    flash(
+        f"Deadline assigned successfully to this class ({result.modified_count} assignment(s)).",
+        "success"
+    )
 
     return redirect(request.referrer)
+
+
 
 @bp.route('/remove-result-deadline', methods=['POST'])
 @login_required
