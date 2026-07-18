@@ -2084,16 +2084,27 @@ def add_result_deadline_single(assignment_id):
 
 
     try:
-        start_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M")
-        end_time = datetime.strptime(end_time_str, "%Y-%m-%dT%H:%M")
+        start_time = datetime.strptime(
+            start_time_str,
+            "%Y-%m-%dT%H:%M"
+        )
+
+        end_time = datetime.strptime(
+            end_time_str,
+            "%Y-%m-%dT%H:%M"
+        )
 
     except ValueError:
         flash("Invalid datetime format", "danger")
         return redirect(request.referrer)
 
 
+
     if end_time <= start_time:
-        flash("End time must be after start time", "danger")
+        flash(
+            "End time must be after start time",
+            "danger"
+        )
         return redirect(request.referrer)
 
 
@@ -2107,36 +2118,51 @@ def add_result_deadline_single(assignment_id):
 
 
     if not assignment:
-        flash("Assignment not found!", "danger")
-        return redirect(request.referrer)
-
-
-
-    # Hubi class-kan inuu hore deadline leeyahay
-    existing_deadline = mongo.db.teacher_assignments.find_one(
-        {
-            "class": assignment["class"],
-            "start_time": {"$exists": True},
-            "end_time": {"$exists": True}
-        }
-    )
-
-
-    if existing_deadline:
 
         flash(
-            f"Class {assignment['class']} already has a deadline. Remove the old deadline first.",
-            "warning"
+            "Assignment not found!",
+            "danger"
         )
 
         return redirect(request.referrer)
 
 
 
-    # Haddii uusan jirin deadline hore, assign garee
-    mongo.db.teacher_assignments.update_one(
+    # class-ka hel si ammaan ah
+    assignment_class = assignment.get("class")
+
+
+    if not assignment_class:
+
+        flash(
+            "Class information missing!",
+            "danger"
+        )
+
+        return redirect(request.referrer)
+
+
+
+    # Haddii class-kan deadline hore leeyahay,
+    # delete hore kadibna ku beddel cusub
+    mongo.db.teacher_assignments.update_many(
         {
-            "_id": ObjectId(assignment_id)
+            "class": assignment_class
+        },
+        {
+            "$unset": {
+                "start_time": "",
+                "end_time": ""
+            }
+        }
+    )
+
+
+
+    # Ku shub deadline cusub class-kaas
+    result = mongo.db.teacher_assignments.update_many(
+        {
+            "class": assignment_class
         },
         {
             "$set": {
@@ -2148,7 +2174,191 @@ def add_result_deadline_single(assignment_id):
     )
 
 
-    flash("Deadline assigned successfully!", "success")
+
+    if result.modified_count:
+
+        flash(
+            f"Deadline updated successfully for Class {assignment_class}!",
+            "success"
+        )
+
+    else:
+
+        flash(
+            "Deadline update failed!",
+            "danger"
+        )
+
+
+    return redirect(request.referrer)
+
+@bp.route('/add-result-deadline/<assignment_id>', methods=['POST'])
+@login_required
+def add_result_deadline_single(assignment_id):
+
+    start_time_str = request.form.get("start_time")
+    end_time_str = request.form.get("end_time")
+
+
+    if not start_time_str or not end_time_str:
+        flash("Start and End time required", "danger")
+        return redirect(request.referrer)
+
+
+
+    try:
+        start_time = datetime.strptime(
+            start_time_str,
+            "%Y-%m-%dT%H:%M"
+        )
+
+        end_time = datetime.strptime(
+            end_time_str,
+            "%Y-%m-%dT%H:%M"
+        )
+
+
+    except ValueError:
+
+        flash("Invalid datetime format", "danger")
+        return redirect(request.referrer)
+
+
+
+    if end_time <= start_time:
+
+        flash(
+            "End time must be after start time",
+            "danger"
+        )
+
+        return redirect(request.referrer)
+
+
+
+
+    # GET ASSIGNMENT
+    assignment = mongo.db.teacher_assignments.find_one(
+        {
+            "_id": ObjectId(assignment_id)
+        }
+    )
+
+
+
+    if not assignment:
+
+        flash(
+            "Assignment not found!",
+            "danger"
+        )
+
+        return redirect(request.referrer)
+
+
+
+
+    # GET CLASS SAFELY
+    assignment_class = (
+        assignment.get("class")
+        or assignment.get("class_name")
+        or assignment.get("grade")
+    )
+
+
+
+    if not assignment_class:
+
+        flash(
+            "Class information missing!",
+            "danger"
+        )
+
+        return redirect(request.referrer)
+
+
+
+
+    # CHECK IF THIS CLASS ALREADY HAS DEADLINE
+    existing_deadline = mongo.db.teacher_assignments.find_one(
+        {
+            "$or": [
+                {
+                    "class": assignment_class
+                },
+                {
+                    "class_name": assignment_class
+                },
+                {
+                    "grade": assignment_class
+                }
+            ],
+
+            "start_time": {
+                "$exists": True
+            },
+
+            "end_time": {
+                "$exists": True
+            }
+        }
+    )
+
+
+
+    if existing_deadline:
+
+
+        flash(
+            f"Class {assignment_class} already has a deadline. Remove the old deadline first.",
+            "warning"
+        )
+
+
+        return redirect(request.referrer)
+
+
+
+
+    # ASSIGN DEADLINE
+    result = mongo.db.teacher_assignments.update_one(
+        {
+            "_id": ObjectId(assignment_id)
+        },
+
+        {
+            "$set": {
+
+                "start_time": start_time,
+
+                "end_time": end_time,
+
+                "updated_at": datetime.utcnow()
+
+            }
+        }
+    )
+
+
+
+    if result.modified_count:
+
+
+        flash(
+            "Deadline assigned successfully!",
+            "success"
+        )
+
+
+    else:
+
+
+        flash(
+            "No changes made!",
+            "warning"
+        )
+
+
 
     return redirect(request.referrer)
 
