@@ -308,42 +308,33 @@ def class_students(assignment_id):
     # ASSIGNMENT
     # =========================
     try:
-        assignment = mongo.db.teacher_assignments.find_one({
-            "_id": ObjectId(assignment_id)
-        })
-    except:
-        return abort(404)
+        assignment = mongo.db.teacher_assignments.find_one(
+            {"_id": ObjectId(assignment_id)}
+        )
+    except Exception:
+        abort(404)
 
     if not assignment:
-        return abort(404)
+        abort(404)
 
     # =========================
-    # CHECK DEADLINE FIRST
+    # CHECK DEADLINE
     # =========================
-    teacher_id = assignment["teacher_id"]
+    start_time = assignment.get("start_time")
+    end_time = assignment.get("end_time")
 
-    deadline_assignment = mongo.db.teacher_assignments.find_one({
-    "teacher_id": teacher_id,
-    "end_time": {"$ne": None}
-    })
+    if end_time:
 
-    if deadline_assignment:
+        now = datetime.utcnow()
 
-        end_time = deadline_assignment.get("end_time")
+        if now >= end_time:
 
-        if end_time:
+            flash(
+                f"⛔ Waqtiga gelinta natiijada wuu dhammaaday! Deadline-ku wuxuu ku ekaa {end_time.strftime('%Y-%m-%d %H:%M')}",
+                "danger"
+            )
 
-            now = datetime.utcnow() + timedelta(hours=3)
-
-            if now >= end_time:
-
-                flash(
-                    "⛔ Waqtiga gelinta natiijada wuu dhammaaday.",
-                    "danger"
-                )
-
-                return redirect(url_for("main.index"))
-
+            return redirect(url_for("main.index"))
 
     # =========================
     # STUDENTS
@@ -355,74 +346,77 @@ def class_students(assignment_id):
     if assignment.get("section_id"):
         query["section_id"] = assignment["section_id"]
 
-    students = list(mongo.db.students.find(query))
+    students = list(
+        mongo.db.students.find(query)
+    )
 
-    # convert ids for frontend safety
-    for s in students:
-        s["id_str"] = str(s["_id"])
+    for student in students:
+        student["id_str"] = str(student["_id"])
 
     # =========================
     # SUBJECT
     # =========================
-    subject = mongo.db.subjects.find_one({
-        "_id": assignment["subject_id"]
-    })
+    subject = mongo.db.subjects.find_one(
+        {
+            "_id": assignment["subject_id"]
+        }
+    )
 
-    subject_name = subject.get("subject_name") if subject else "N/A"
+    subject_name = (
+        subject.get("subject_name")
+        if subject else "N/A"
+    )
 
     # =========================
     # TEACHER
     # =========================
-    teacher = mongo.db.teachers.find_one({
-        "_id": assignment["teacher_id"]
-    })
-
+    teacher = mongo.db.teachers.find_one(
+        {
+            "_id": assignment["teacher_id"]
+        }
+    )
 
     # =========================
-    # RESULTS (🔥 FIXED PROPERLY)
+    # CLASS
     # =========================
-     # subject + teacher
-    subject = mongo.db.subjects.find_one({"_id": assignment["subject_id"]})
-    teacher = mongo.db.teachers.find_one({"_id": assignment["teacher_id"]})
+    classroom = mongo.db.classrooms.find_one(
+        {
+            "_id": assignment["class_id"]
+        }
+    )
 
-    # 🔥 LOAD EXISTING RESULTS (IMPORTANT FIX)
-    results = mongo.db.results.find({
-        "teacher_id": assignment["teacher_id"],
-        "subject_id": assignment["subject_id"]
-    })
+    class_name = (
+        classroom.get("class_name")
+        if classroom else "N/A"
+    )
 
+    # =========================
+    # RESULTS
+    # =========================
+    results = mongo.db.results.find(
+        {
+            "teacher_id": assignment["teacher_id"],
+            "subject_id": assignment["subject_id"]
+        }
+    )
 
-    # GET GLOBAL DEADLINE (from first assignment that has it)
-    deadline_assignment = mongo.db.teacher_assignments.find_one({
-        "teacher_id": ObjectId(teacher_id),
-        "start_time": {"$ne": None},
-        "end_time": {"$ne": None}
-    })
-
-    start_time = deadline_assignment.get("start_time") if deadline_assignment else None
-    end_time = deadline_assignment.get("end_time") if deadline_assignment else None
-
-    # convert to map for fast lookup
     result_map = {}
-    for r in results:
-        result_map[str(r["student_id"])] = r["score"]
+
+    for result in results:
+        result_map[str(result["student_id"])] = result.get("score")
 
     return render_template(
         "frontend/pages/teacher/class_students.html",
         students=students,
-        subject_name=subject_name,
         assignment=assignment,
         subject=subject,
         teacher=teacher,
-        class_name=mongo.db.classrooms.find_one(
-            {"_id": assignment["class_id"]}
-        )["class_name"],
+        subject_name=subject_name,
+        class_name=class_name,
         result_map=result_map,
-          start_time=start_time,
+        start_time=start_time,
         end_time=end_time
     )
-
-
 
 @bp.route('/save-bulk-results', methods=['POST'])
 def save_bulk_results():
@@ -460,7 +454,7 @@ def save_bulk_results():
             errors.append(f"Student {student_id}: invalid number")
             continue
 
-        if score < 0 or score > 50:
+        if score < 0 or score >100:
             errors.append(f"Student {student_id}: out of range")
             continue
 
